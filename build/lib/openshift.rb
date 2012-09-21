@@ -1,12 +1,13 @@
+#!/usr/bin/env ruby
+
+$: << File.expand_path(File.dirname(__FILE__))
+
 require 'logger'
 require 'net/smtp'
-#require 'lib/openshift/constants'
-require 'lib/openshift/ssh'
-require 'lib/openshift/tito'
-require 'lib/openshift/amz'
-require 'lib/openshift/sauce_labs'
-require 'lib/openshift/brew'
-require 'lib/openshift/builder_helper'
+require 'openshift/ssh'
+require 'openshift/tito'
+require 'openshift/amz'
+require 'openshift/builder_helper'
 
 # Force synchronous stdout
 STDOUT.sync, STDERR.sync = true
