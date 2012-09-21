@@ -1,0 +1,509 @@
+#!/usr/bin/env ruby
+
+$: << File.expand_path(File.dirname(__FILE__))
+
+require 'rubygems'
+require 'thor'
+require 'fileutils'
+require 'origin_constants'
+require 'lib/openshift'
+require 'pp'
+require 'yaml'
+require 'builder'
+
+include FileUtils
+
+module Origin
+  class BuilderPlugin < StickShift::Builder
+    include OpenShift::BuilderHelper
+
+    desc "build_livecd NAME", "Creates a livecd from a launched Origin instance"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
+    def build_livecd(name)
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+
+      # Get the hostname from a tag lookup or assume it's SSH accessible directly
+      conn = connect(options.region)
+      instance = find_instance(conn, name, true, true, ssh_user)
+      hostname = instance.dns_name
+      puts "Done"
+      puts "Hostname: #{hostname}"
+  
+      begin
+        puts "Launching live-cd build..."
+        out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/crankcase/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
+        puts "Done"
+      ensure
+        terminate_instance(instance) if options.terminate?
+      end
+    end
+
+    no_tasks do  
+      def ssh_user
+        return "ec2-user"
+      end
+
+      def download_artifacts(hostname)
+        puts "Downloading logs and screenshots..."
+        `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
+        scp_from(hostname, "/tmp/rhc/*", "rhc/log")
+        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log")
+        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log")
+        scp_from(hostname, "/var/www/stickshift/broker/log/*", "rhc/log/broker")
+        scp_from(hostname, "/var/log/stickshift/user_action.log", "rhc/log/broker/user_action.log")
+        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective")
+        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log")
+        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log")
+        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log")
+        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log")
+        scp_from(hostname, "/var/log/dmesg", "rhc/log/system/dmesg.log")
+        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log")
+        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log")
+        scp_from(hostname, "/var/lib/stickshift/*/*/jbossas-7/standalone/tmp/*.log", "rhc/log/jbossas")
+        scp_from(hostname, "/tmp/rhc/benchmark.csv", "rhc/log")
+        scp_from(hostname, "/tmp/broker-profiler/*", "rhc/log/broker-profiler")
+        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage")
+        puts "Done"
+      end
+      
+      def validate_instance(hostname, num_tries=1)
+      end
+      
+      def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
+        ssh(hostname, "rm -f #{repo_parent_dir}/li-test/tests; ln -s #{repo_parent_dir}/li-test/stickshift/controller/test/cucumber #{repo_parent_dir}/li-test/tests ;", 60, false, 2, user)
+      end
+
+      def setup_verifier(hostname)
+        print "Initializing git repo for syncing..."
+        init_repo(hostname, true, nil, "~", ssh_user)
+        puts "Done"
+        update_remote_tests(hostname, nil, "~", ssh_user)
+      end
+
+      def rpm_manifest(hostname, sshuser="root")
+        print "Retrieving RPM manifest.."
+        manifest = ssh(hostname, "rpm -qa | grep -E '(rhc|stickshift|swingshift|gearchanger|uplift)'", user=sshuser)
+        manifest = manifest.split("\n").sort.join(" / ")
+        # Trim down the output to 255 characters
+        manifest.gsub!(/rubygem-([a-z])/, '\1')
+        manifest.gsub!('swingshift-', '')
+        manifest.gsub!('uplift-', '')
+        manifest.gsub!('gearchanger-', '')
+        manifest.gsub!('stickshift-', 'ss-')
+        manifest.gsub!('mcollective-', 'mco-')
+        manifest.gsub!('.fc16.noarch', '')
+        manifest.gsub!(/\.git\.[a-z0-9\.]+/, '')
+        manifest = manifest[0..254]
+        puts "Done"
+        return manifest
+      end
+
+      def test_impl(tag, hostname, instance, conn, options, image_id=nil)
+        begin
+          
+          validate_instance(hostname, 4)
+  
+          #disable_charlie(hostname) if options.disable_charlie?
+          
+          mcollective_logs(hostname) if options.mcollective_logs?
+  
+          #idle_all_gears(hostname) unless options.official?
+          
+          reset_test_dir(hostname)
+  
+          #broker_profiler(hostname) if options.profile_broker?
+  
+          test_queues = [[], [], [], []]
+            
+          extended_tests = nil
+          if options.include_extended
+            extended_tests = []
+            extended_tests = options.include_extended.split(",").map do |extended_test|
+              extended_test.strip
+            end
+          end
+  
+          if options.include_extended
+            extended_tests.each do |extended_test|
+              case extended_test
+              when 'broker'
+                test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 li-test/tests\"", {:retry_individually => true}]
+                test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 li-test/tests\"", {:retry_individually => true}]
+                test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 li-test/tests\"", {:retry_individually => true}]
+                test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 li-test/tests\"", {:retry_individually => true}]
+                test_queues[3] << ["StickShift Broker Unit Ext 1", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit_ext1", {:retry_individually => true}]
+              when 'runtime'
+                test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 li-test/tests\""]
+                test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 li-test/tests\""]
+                test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 li-test/tests\""]
+              when 'site'
+                puts "Warning: Site tests are currently not supported"
+              when 'rhc'
+                test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended li-test/tests\"", {:retry_individually => true}]
+                base_str = "QUIET=1 RHC_SERVER=localhost cucumber #{CUCUMBER_OPTIONS} li-test/features"
+                tags = [
+                  [ :client, :domain, :sshkey ],
+                  [ :application ],
+                  [ :single_cartridge ],
+                  [ :multiple_cartridge ]
+                ]
+                #(0..3).each do |q|
+                #  tags[q].each do |tag|
+                #    test_queues[q] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag} "]
+                #  end
+                #end
+
+                # TODO: Tests need to run serially until they are totally isolated
+                #  eg - some will destroy a domain or app that another is working on
+                tags.flatten.each do |tag|
+                  test_queues[0] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag}", {:retry_individually => true}]
+                end
+
+              else
+                puts "Not supported for extended: #{extended_test}"
+                exit 1
+              end
+            end
+          elsif options.include_rcov?
+            test_queues[0] << ["StickShift Node Unit Coverage", "cd li-test/stickshift/node; rake rcov; cp -a coverage /tmp/rhc/stickshift_node_coverage"]
+            test_queues[1] << ["StickShift Broker Unit and Functional Coverage", "cd li-test/stickshift/broker; rake rcov; cp -a test/coverage /tmp/rhc/stickshift_broker_coverage"]
+          elsif options.include_cucumber
+            timeout = @@SSH_TIMEOUT
+            timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
+            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} li-test/tests", {:timeout => timeout}]
+          elsif options.include_web?
+            puts "Warning: Tests for the website are currently not supported"
+          else
+  
+            unless options.exclude_broker?
+              test_queues[0] << ["StickShift Broker Functional", "cd li-test/stickshift/broker; bundle exec rake test:functionals"]
+              test_queues[1] << ["StickShift Broker Integration", "cd li-test/stickshift/broker; bundle exec rake test:integration"]
+
+              test_queues[2] << ["StickShift Broker Unit 1", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit1"]
+              test_queues[3] << ["StickShift Broker Unit 2", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit2"]
+              test_queues[2] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin li-test/tests\""]
+            end
+
+            unless options.exclude_runtime?
+              #test_queues[3] << ["Runtime Unit", "cd li-test/stickshift/node; su -c \"rake unit_test\""]
+              (1..4).each do |i|
+                test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} li-test/tests\""]
+              end
+            end
+  
+            unless options.exclude_site?
+              puts "Warning: Tests for the site are currently not supported"
+            end
+
+            unless options.exclude_rhc?
+            end
+          end
+  
+          threads = []
+          failures = []
+  
+          retry_threshold = 0
+          test_queues.each do |test_queue|
+            titles = []
+            cmds = []
+            retry_individually = []
+            timeouts = []
+            test_queue.each do |test|
+              titles << test[0]
+              cmds << test[1]
+              opts = test[2] || {}
+              retry_individually << opts[:retry_individually] ? true : false
+              timeouts << opts[:timeout] ? opts[:timeout] : @@SSH_TIMEOUT
+              retry_threshold += 8
+            end
+            add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, retry_individually, timeouts, ssh_user)
+          end
+  
+          threads.each do |t|
+            t[0].join
+          end
+  
+          failures.uniq!
+  
+          begin
+            if failures.length > 0 && failures.length <= retry_threshold 
+              #idle_all_gears(hostname)
+              retry_test_failures(hostname, failures, 2, timeout=@@SSH_TIMEOUT, ssh_user)
+            elsif failures.length > retry_threshold
+              exit 1
+            end
+  
+            # These are special tests that cannot be written to work concurrently
+            if options.include_extended
+              extended_tests.each do |extended_test|
+                case extended_test
+                when 'broker'
+                when 'runtime'
+                  #idle_all_gears(hostname)
+                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton li-test/tests\""]
+                  output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1], timeout=@@SSH_TIMEOUT, ssh_user)
+                  retry_test_failures(hostname, [singleton_queue], 2, timeout=@@SSH_TIMEOUT, ssh_user) if 0 != exit_code
+                when 'site'
+                when 'rhc'
+                else
+                  puts "Not supported for extended: #{extended_test}"
+                  exit 1
+                end
+              end
+            end
+  
+            validate_instance(hostname, 4)
+          ensure
+            if options.include_web?
+              cmd = "service sauce-connect stop"
+              run_ssh(hostname, "Stop sauce connect tunnel", cmd, timeout)
+            end
+          end
+  
+          if options.official?
+            image_id = image_id ? image_id : instance.image_id
+            # Mark the image as verified
+            image = conn.images[image_id]
+            verify_image(image)
+  
+            puts "Sending QE ready email..."
+            begin
+              send_verified_email(image_id, image.name)
+            rescue Exception => e
+              puts "Failed sending email with message: #{e.message}"
+            end
+          elsif !options.terminate?
+            #idle_all_gears(hostname)
+          end
+  
+          #broker_profiler(hostname, enable=false) if options.profile_broker?
+  
+          puts "Done"
+  
+        ensure
+          if options.terminate? || options.official?
+            download_artifacts(hostname)
+          end
+          if options.terminate?
+            terminate_instance(instance)
+          end
+        end
+      end
+      
+      def update_impl(options)
+        # Warn on uncommitted changes
+        `git diff-index --quiet HEAD`
+        puts "WARNING - Uncommitted repository changes" if $? != 0
+    
+        # Figure out what needs to be built - exclude devenv for syncs
+        sync_dirs = get_sync_dirs
+    
+        sync_dirs.each do |sync_dir|
+          puts "The sync dir: #{sync_dir}"
+          package_name = sync_dir[0]
+          build_dir = sync_dir[1]
+          spec_file = sync_dir[2]
+          build_and_install(package_name, build_dir, spec_file)
+        end
+        
+        if options.include_stale?
+          stale_dirs = get_stale_dirs
+          stale_dirs.each do |stale_dir|
+            package_name = stale_dir[0]
+            build_dir = stale_dir[1]
+            spec_file = stale_dir[2]
+            build_and_install(package_name, build_dir, spec_file)
+          end
+        end
+        #run("yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*", :verbose => options.verbose?)
+        run("/sbin/service mcollective restart; /sbin/service stickshift-broker restart", :verbose => options.verbose?)
+      end
+
+      def sync_impl(name, options)
+        # Get the hostname from a tag lookup or assume it's SSH accessible directly
+        hostname = get_host_by_name_or_tag(name, options, ssh_user)
+
+        clone_commands, working_dirs = sync_available_sibling_repos(hostname, "~", ssh_user)
+        update_remote_tests(hostname, nil, "~", ssh_user)
+        
+        if !options.skip_build?
+          puts "Performing remote install..."
+
+          out, ret = ssh(hostname, "rm -rf build-working; mkdir -p build-working/build", 60, true, 1, ssh_user)
+          scp_to(hostname, "build/*", "build-working/build", 60, 2, ssh_user) if ret == 0
+
+          out, ret = ssh(hostname, "rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user) if ret == 0
+
+          if options.clean_metadata? and ret == 0
+            out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user)
+          end
+          
+          out, ret = ssh(hostname, "su -c \"cd build-working; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user)
+
+          if options.clean_metadata? and ret == 0
+            out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*; " : ''}\"", 60 * 15, true, 1, ssh_user) if ret == 0
+          end
+
+          puts "Restarting services..."
+          out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 5, true, 1, ssh_user)
+        end
+
+        if ret != 0
+          puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          puts "Build failed!  Exiting."
+          puts out
+          puts "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          exit 1
+        end
+        puts "Done"
+      end
+  
+      def build_impl(name, build_num, image, conn, options)
+        $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
+
+        puts "Launching AMI: #{image.id} - #{image.name}"
+        instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
+        
+        hostname = instance.dns_name
+        puts "Done"
+        puts "Hostname: #{hostname}"
+    
+        ret, out = 0, nil
+        begin
+          if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
+            puts "Starting yum update..."
+            out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 10, true, 1, ssh_user)
+            puts "Installing packages required for build..."
+            out, ret = ssh(hostname, "su -c \"yum install -y git vim rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user) if ret == 0
+            if ret == 0
+              puts "Creating mount..."
+              out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
+            end
+
+            if ret == 0
+              init_repo(hostname, true, nil, "/data", ssh_user)
+              clone_commands, working_dirs = '', ''
+  
+              if options.install_from_local_source?
+                puts "Performing clean install from local source..."
+                clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
+              else 
+                SIBLING_REPOS.each do |repo_name, repo_dirs|
+                  working_dirs += "#{repo_name}-working "
+                  clone_commands += "git clone #{repo_name} #{repo_name}-working; "
+                  clone_commands += "pushd #{repo_name}-working; git checkout stage; popd; " if options.use_stage_repo?
+                end
+              end
+              out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 2, true, 2, ssh_user)
+            end
+            puts "Done"
+      
+            if ret != 0
+              puts "Exiting with error code #{ret}"
+              puts "Output: #{out}"
+              exit ret
+            end
+            
+            if options[:extra_rpm_dir]
+              if File.exist? options[:extra_rpm_dir]
+                out, ret = ssh(hostname, "mkdir -p /data/crankcase-working/build/extras", 60, true, 1, ssh_user)
+                files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
+                files.each do |file|
+                  scp_to(hostname, file, "/data/crankcase-working/build/extras/", 60*10, 5, ssh_user)
+                end
+          
+                out, ret = ssh(hostname, "su -c \"cd /data/crankcase-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
+              else
+                puts "!!!Warning!!!"
+                puts "Directory containing extra rpms not found. Skipping..."
+                puts "!!!Warning!!!"
+              end
+            end
+        
+            puts "Running build_setup script..."
+            out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake build_setup", 60 * 20, true, 1, ssh_user) if ret == 0
+            puts "Downgrading qpid version..."
+            out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf qpid-client-devel ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 60 * 10, false, 1, ssh_user) if ret == 0
+          end
+          
+          if options.install_from_source? || options.install_from_local_source?
+            puts "Running devbroker script..."
+            out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake devbroker", 60 * 20, true, 1, ssh_user) if ret == 0
+          end
+          
+          out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user *\"", 60 * 2, true, 1, ssh_user) if ret == 0
+          puts "Done"
+      
+          if ret != 0
+            puts "Exiting with error code #{ret}"
+            puts "Output: #{out}"
+            exit ret
+          end
+
+          # Add the paths to the users .bashrc file
+          out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user) if ret == 0
+    
+          image_id = nil
+          if options[:register]
+            manifest = rpm_manifest(hostname, ssh_user)
+            register_image(conn, instance, name + '-clean_' + build_num, manifest) if options.build_clean_ami?
+              
+            registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
+            image_id = registered_ami.id
+          end
+    
+          unless options.skip_verify? || options.install_required_packages?
+            puts "Running broker setup..."
+            out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 10, true, 1, ssh_user) if ret == 0
+
+            scp_remote_tests(hostname, "~", ssh_user)
+            test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
+          end
+          puts "Done."
+        ensure
+          terminate_instance(instance) if options.terminate?
+        end
+      end
+  
+      def sanity_check_impl(tag, hostname, instance, conn, options, image_id=nil)
+        threads = []
+        failures = []
+        titles = ["StickShift Broker Sanity",
+                  "StickShift Node Unit"]
+    
+        cmds = ["su -c \"cd /var/www/stickshift/broker; bundle exec rake test:sanity\"",
+                "cd li-test/stickshift/node; su -c \"rake unit_test\""]
+        add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, ssh_user)
+        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity li-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
+    
+        threads.each do |t|
+          t[0].join
+        end
+    
+        unless failures.empty?
+          failures.uniq!
+          retry_test_failures(hostname, failures, 1, @@SSH_TIMEOUT, ssh_user)
+        end
+      end
+      
+      def update_facts_impl(hostname)
+        # Not required since this is handled by ss-setup-broker script
+      end
+      
+      def post_launch_setup(hostname)
+        puts "Running broker setup..."
+        out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 5, true, 1, ssh_user)
+        puts "Done"
+
+        if ret != 0
+          puts "Exiting with error code #{ret}"
+          puts "Output: #{out}"
+          exit ret
+        end
+      end
+    end # no_tasks end
+  end # class end
+end # module end
+Origin::BuilderPlugin.start
