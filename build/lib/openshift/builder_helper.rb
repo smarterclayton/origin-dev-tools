@@ -25,8 +25,14 @@ module OpenShift
     # Only look for a tag if the --tag option is specified
     def get_host_by_name_or_tag(name, options=nil, user="root")
       return name unless options && options.tag?
+      
       instance = find_instance(connect(options.region), name, true, true, user)
-      return instance ? instance.dns_name : name
+      if not instance.nil?
+        return instance.dns_name
+      else
+        puts "Unable to find instance with tag: #{name}"
+        exit 1
+      end
     end
 
     def build_and_install(package_name, build_dir, spec_file)

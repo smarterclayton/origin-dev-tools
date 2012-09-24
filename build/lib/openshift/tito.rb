@@ -134,6 +134,13 @@ module OpenShift
                 package_name = replace_globals(package_name, file_str)
                 packages[package_name] = [build_dir, file]
               end
+              provides = /Provides:\s*(.*)/.match(file_str)
+              if provides
+                package_name = provides[1].strip
+                package_name.gsub!(/\s.*/, '')
+                package_name = replace_globals(package_name, file_str)
+                packages[package_name] = [build_dir, file]
+              end
             end
           end
         end
@@ -144,8 +151,13 @@ module OpenShift
     def replace_globals(package_name, spec_str)
       while (package_name =~ /%\{([^\{\}]*)\}/)
         var_name = $1
-        var_val = /%global *#{var_name} *(.*)/.match(spec_str)[1].strip
-        package_name.gsub!("%{#{var_name}}", var_val)
+        match = /%global *#{var_name} *(.*)/.match(spec_str)
+        if match
+          var_val = match[1].strip
+          package_name.gsub!("%{#{var_name}}", var_val)
+        else
+          break
+        end
       end
       package_name
     end

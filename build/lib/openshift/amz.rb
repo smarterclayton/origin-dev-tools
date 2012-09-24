@@ -315,7 +315,7 @@ module OpenShift
     end
     
     def register_image(conn, instance, name, manifest)
-      print "Registering AMI..."
+      puts "Registering AMI..."
       outer_num_retries = 4
       image = nil
       (1..outer_num_retries).each do |outer_index|
