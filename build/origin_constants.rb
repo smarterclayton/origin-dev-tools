@@ -56,7 +56,7 @@ SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '.
                  'openshift-dev-tools' => ['../openshift-dev-tools']}
 SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/openshift/crankcase.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
-                        'openshift-dev-tools' => 'git@github.com:openshift/openshift-dev-tools.git'}
+                        'origin-dev-tools' => 'git@github.com:openshift/origin-dev-tools.git'}
 
 CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
