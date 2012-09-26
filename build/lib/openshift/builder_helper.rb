@@ -85,6 +85,9 @@ rm -rf #{repo_parent_dir}/li-test
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
 
+      #ssh(hostname, %{cd ~/li-test; find -name Gemfile.lock | xargs -L 1 dirname | xargs -t -L 1 -I {} sh -c "pushd {}; rm Gemfile.lock; scl enable ruby193 \\"bundle install --local\\"; touch Gemfile.lock; popd;"}, 60, false, 1, user)
+      update_test_bundle(hostname, user, 'console', 'site')
+
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
     end
@@ -118,6 +121,7 @@ mkdir -p /tmp/rhc/junit
         puts "Done"
         puts "Extracting tests on remote instance: #{hostname}"
         ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120)
+        update_test_bundle(hostname, user, 'console', 'site')
         update_cucumber_tests(hostname, repo_parent_dir, user)
         puts "Done"
         FileUtils.rm_rf tmpdir
@@ -160,6 +164,11 @@ mkdir -p /tmp/rhc/junit
         sync_repo(repo_name, hostname, remote_repo_parent_dir, ssh_user)
       end if exists
       exists
+    end
+
+    def update_test_bundle(hostname, user, *dirs)
+      #ssh(hostname, %{cd ~/li-test; find -name Gemfile.lock | xargs -L 1 dirname | xargs -t -L 1 -I {} sh -c "pushd {}; rm Gemfile.lock; scl enable ruby193 \\"bundle install --local\\"; touch Gemfile.lock; popd;"}, 60, false, 1, user)
+      dirs.each{ |dir| ssh(hostname, %{cd ~/li-test/#{dir}; rm Gemfile.lock; scl enable ruby193 "bundle install --local"; touch Gemfile.lock;}, 60, false, 1, user) }
     end
 
     # clones crankcase/rhc over to remote;
@@ -224,6 +233,31 @@ mkdir -p /tmp/rhc/junit
       puts "Keep all mcollective logs on remote instance: #{hostname}"
       ssh(hostname, "echo keeplogs=9999 >> /etc/mcollective/server.cfg", 240)
       ssh(hostname, "/sbin/service mcollective restart", 240)
+    end
+
+    def update_api_file(instance)
+      public_ip = instance.dns_name
+      external_config = "~/.openshift/api.yml"
+      config_file = File.expand_path(external_config)
+
+      Dir.mkdir(File.expand_path('~/.openshift')) rescue nil
+
+      if not FileTest.exists?(config_file)
+        puts "File '#{external_config}' does not exist, creating..."
+        system("touch #{external_config}")
+        File.open(config_file, 'w') do |f| f.write(<<-END
+url: https://#{public_ip}/broker/rest
+suffix: dev.rhcloud.com
+          END
+          )
+        end
+
+      else
+        puts "Updating ~/.openshift/api.yml with public ip = #{public_ip}"
+        s = IO.read(config_file)
+        s.gsub!(%r[^url:\s*https://[^/]+/broker/rest$]m, "url: https://#{public_ip}/broker/rest")
+        File.open(config_file, 'w'){ |f| f.write(s) }
+      end
     end
 
     def update_ssh_config_verifier(instance)

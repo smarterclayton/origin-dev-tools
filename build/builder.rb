@@ -38,7 +38,7 @@ module StickShift
     method_option :exclude_site, :type => :boolean, :desc => "Exclude site tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
-    method_option :include_rcov, :type => :boolean, :desc => "Include coverage analysis on unit tests"
+    method_option :include_coverage, :type => :boolean, :desc => "Include coverage analysis on unit tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :build_clean_ami, :type => :boolean, :desc => "Indicates whether to start from a base RHEL image"
@@ -158,6 +158,7 @@ module StickShift
 
       validate_instance(hostname, 4)
 
+      update_api_file(instance) if options.ssh_config_verifier?
       update_ssh_config_verifier(instance) if options.ssh_config_verifier?
       update_express_server(instance) if options.express_server?
 
@@ -184,7 +185,7 @@ module StickShift
     method_option :exclude_site, :type => :boolean, :desc => "Exclude site tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_cucumber, :required => false, :desc => "Include a specific cucumber test (verify, internal, node, api, etc)"
-    method_option :include_rcov, :type => :boolean, :desc => "Include coverage analysis on unit tests"
+    method_option :include_coverage, :type => :boolean, :desc => "Include coverage analysis on unit tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :disable_charlie, :type => :boolean, :desc=> "Disable idle shutdown timer on dev instance (charlie)"
     method_option :mcollective_logs, :type => :boolean, :desc=> "Don't allow mcollective logs to be deleted on rotation"

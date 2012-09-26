@@ -3,7 +3,8 @@ require 'fileutils'
 DEVENV_REGEX = /^rhc-devenv-\d+/
   
 PACKAGE_REGEX = /^([\w\.-]*)-\d+\.\d+\.\d+-\d+\.\..*:$/
-IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'stickshift-broker', 'rubygem-gearchanger-oddjob-plugin', 'rubygem-swingshift-mongo-plugin', 'rubygem-uplift-bind-plugin', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node','rubygem-swingshift-kerberos-plugin']
+IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'stickshift-broker', 'rubygem-gearchanger-oddjob-plugin', 'rubygem-swingshift-mongo-plugin', 'rubygem-uplift-bind-plugin', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node', 'rubygem-swingshift-kerberos-plugin', 'cartridge-postgresql-9.1', 'cartridge-php-5.4']
+SKIP_PREREQ_PACKAGES = ['java-devel']
 
 module OpenShift
   module Tito
@@ -99,7 +100,7 @@ module OpenShift
       stale_dirs
     end
 
-    def get_packages(include_subpackages=false)
+    def get_packages(include_subpackages=false, as_obj=false)
       packages = {}
       dirs = ['.']
       SIBLING_REPOS.each do |repo_name, repo_dirs|
@@ -113,33 +114,12 @@ module OpenShift
       dirs.each do |repo_dir|
         Dir.glob("#{repo_dir}/**/*.spec") do |file|
           unless file.start_with?('build/')
-            build_dir = File.dirname(file)
-            file_str = File.read(file)
-            package_name = /Name: *(.*)/.match(file_str)[1].strip
-            while (package_name =~ /%\{([^\{\}]*)\}/)
-              package_name = replace_globals(package_name, file_str)
-            end
-            packages[package_name] = [build_dir, file]
-            parent_package_name = package_name
-            
+            package = Package.new(file, File.dirname(file))
+            packages[package.name] = as_obj ? package : [package.dir, package.spec_path]
+
             if include_subpackages
-              package = /%package *(.*)/.match(file_str)
-              if package
-                package_name = package[1].strip
-                if package_name.start_with?('-n')
-                  package_name = package_name[2..-1]
-                else
-                  package_name = "#{parent_package_name}-#{package_name}"
-                end
-                package_name = replace_globals(package_name, file_str)
-                packages[package_name] = [build_dir, file]
-              end
-              provides = /Provides:\s*(.*)/.match(file_str)
-              if provides
-                package_name = provides[1].strip
-                package_name.gsub!(/\s.*/, '')
-                package_name = replace_globals(package_name, file_str)
-                packages[package_name] = [build_dir, file]
+              package.subpackages.each do |p|
+                packages[package.name] = as_obj ? p : [p.dir, p.spec_path]
               end
             end
           end
@@ -147,20 +127,139 @@ module OpenShift
       end
       packages
     end
-    
-    def replace_globals(package_name, spec_str)
-      while (package_name =~ /%\{([^\{\}]*)\}/)
-        var_name = $1
-        match = /%global *#{var_name} *(.*)/.match(spec_str)
-        if match
-          var_val = match[1].strip
-          package_name.gsub!("%{#{var_name}}", var_val)
-        else
-          break
+
+    class Package
+      attr_reader :spec_path, :dir
+      def initialize(spec_path, dir)
+        @spec_path, @dir = spec_path, dir
+      end
+      def spec_file
+        @spec_file ||= File.read(@spec_path)
+      end
+      def name
+        @name ||= replace_globals(/Name:\s*(.*)/.match(spec_file)[1].strip)
+      rescue
+        raise @spec_path
+      end
+
+      def build_requires
+        spec_file.lines.to_a.inject([]) do |a,s| 
+          match = s.match(/^\s*BuildRequires:\s*([^\s]*)$/)
+          a << match[1] if match
+          a
         end
       end
-      package_name
+
+      def build_requires
+        @build_requires ||= spec_file.lines.to_a.inject([]) do |a,s|
+          match = s.match(/^\s*BuildRequires:\s*(.+)$/)
+          a << Require.new(match[1]) if match
+          a
+        end
+      end
+
+      def subpackages
+        @subpackages ||= begin
+          package = /%package\s*(.*)/.match(spec_file)
+          if package
+            package_name = package[1].strip
+            if package_name.start_with?('-n')
+              package_name = package_name[2..-1]
+            else
+              package_name = "#{name}-#{package_name}"
+            end
+            package_name = replace_globals(package_name, spec_file)
+            [Subpackage.new(self, package_name)]
+          else
+            []
+          end
+        end
+      end
+
+      def eql?(other)
+        return self.name == other if other.is_a? String
+        self.name == other.name
+      end
+      def ==(other)
+        eql?(other)
+      end
+      def hash
+        self.name.hash
+      end
+      def to_s
+        self.name
+      end
+      def <=>(other)
+        return self.name <=> other if other.is_a? String
+        self.name <=> other.name
+      end
+
+      protected
+        def replace_globals(s)
+          while (s =~ /%\{([^\{\}]*)\}/)
+            var_name = $1
+            var_val = /%global *#{var_name} *(.*)/.match(spec_file)[1].strip
+            s = s.gsub("%{#{var_name}}", var_val)
+          end
+          s
+        end
     end
+
+    class Subpackage < Package
+      attr_reader :name, :parent
+      def initialize(parent, name)
+        @parent, @name = parent, name
+      end
+      [:spec_file, :spec_path, :spec_dir].each do |sym|
+        define_method sym do
+          parent.send(sym)
+        end
+      end
+      def sub_packages; []; end
+    end
+
+    class Require
+      attr_reader :value
+      def initialize(value)
+        @value = value
+      end
+      def name
+        @name ||= value.
+          gsub(/\(/, '-').  # package names get unparethesized
+          gsub(/\)/, '').
+          gsub(/>=.+/, ''). # strip version qualifiers
+          gsub(/=.+/,'').
+          gsub(/,/, '').
+          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+      end
+      def yum_name
+        @yum_name ||= value.
+          gsub(/\(/, '-').
+          gsub(/\)/, '').
+          gsub(/>=.+/, '').
+          gsub(/=/,'-').
+          gsub(/,/, '').
+          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+      end
+      def to_s
+        name
+      end
+      def eql?(other)
+        return self.name == other if other.is_a? String
+        return true if other.respond_to?(:name) && other.name == name
+        false
+      end
+      def ==(other)
+        eql?(other)
+      end
+      def hash
+        name.hash
+      end
+      def <=>(other)
+        name <=> other.name
+      end
+    end
+
 
     def update_sync_history(current_package, current_package_contents, current_sync_dir, current_spec_file, sync_dirs)
       current_package_file = "/tmp/devenv/sync/#{current_package}"
