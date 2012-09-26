@@ -168,7 +168,7 @@ module OpenShift
             else
               package_name = "#{name}-#{package_name}"
             end
-            package_name = replace_globals(package_name, spec_file)
+            package_name = replace_globals(package_name)
             [Subpackage.new(self, package_name)]
           else
             []
