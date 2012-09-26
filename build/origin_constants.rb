@@ -1,7 +1,7 @@
 #
 # Global definitions
 #
-AMI = {"us-east-1" =>"ami-0316d86a"}
+AMI = {"us-east-1" =>"ami-2ea50247"}
 TYPE = "m1.large"
 KEY_PAIR = "libra"
 ZONE = 'us-east-1d'
@@ -53,7 +53,7 @@ JENKINS_HOME_DIR = '/var/lib/stickshift/ci-origin/app-root/data'
 
 SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '../crankcase', JENKINS_HOME_DIR + '/jobs/crankcase/workspace'],
                  'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', JENKINS_HOME_DIR + '/jobs/rhc/workspace'],
-                 'openshift-dev-tools' => ['../openshift-dev-tools']}
+                 'origin-dev-tools' => ['../origin-dev-tools']}
 SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/openshift/crankcase.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'git@github.com:openshift/origin-dev-tools.git'}

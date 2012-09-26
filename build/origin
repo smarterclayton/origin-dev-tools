@@ -332,13 +332,13 @@ module Origin
           puts "Performing remote install..."
 
           out, ret = ssh(hostname, "rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user) if ret == 0
-          out, ret = ssh(hostname, "rm -rf openshift-dev-tools; mv openshift-dev-tools-working openshift-dev-tools", 60, true, 1, ssh_user)
+          out, ret = ssh(hostname, "rm -rf origin-dev-tools; mv origin-dev-tools-working origin-dev-tools", 60, true, 1, ssh_user)
 
           if options.clean_metadata? and ret == 0
             out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user)
           end
           
-          out, ret = ssh(hostname, "su -c \"cd openshift-dev-tools; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user)
 
           if options.clean_metadata? and ret == 0
             out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*; " : ''}\"", 60 * 15, true, 1, ssh_user) if ret == 0

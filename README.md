@@ -1,4 +1,4 @@
-openshift-dev-tools
+origin-dev-tools
 ===================
 
-OpenShift Development Tools
+Origin Development Tools
