@@ -121,6 +121,9 @@ module OpenShift
               package.subpackages.each do |p|
                 packages[package.name] = as_obj ? p : [p.dir, p.spec_path]
               end
+              package.provides.each do |p|
+                packages[package.name] = as_obj ? p : [p.dir, p.spec_path]
+              end
             end
           end
         end
@@ -175,6 +178,20 @@ module OpenShift
           end
         end
       end
+      
+      def provides
+        @provides ||= begin
+          package = /%Provides:\s*(.*)/.match(spec_file)
+          if package
+            package_name = package[1].strip
+            package_name.gsub!(/\s.*/, '')
+            package_name = replace_globals(package_name)
+            [Subpackage.new(self, package_name)]
+          else
+            []
+          end
+        end
+      end
 
       def eql?(other)
         return self.name == other if other.is_a? String
@@ -198,8 +215,13 @@ module OpenShift
         def replace_globals(s)
           while (s =~ /%\{([^\{\}]*)\}/)
             var_name = $1
-            var_val = /%global *#{var_name} *(.*)/.match(spec_file)[1].strip
-            s = s.gsub("%{#{var_name}}", var_val)
+            match = /%global *#{var_name} *(.*)/.match(spec_file)
+            if match
+              var_val = match[1].strip
+              s = s.gsub("%{#{var_name}}", var_val)
+            else
+              break
+            end
           end
           s
         end
