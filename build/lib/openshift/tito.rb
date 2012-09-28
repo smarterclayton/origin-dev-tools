@@ -119,10 +119,10 @@ module OpenShift
 
             if include_subpackages
               package.subpackages.each do |p|
-                packages[package.name] = as_obj ? p : [p.dir, p.spec_path]
+                packages[p.name] = as_obj ? p : [p.dir, p.spec_path]
               end
               package.provides.each do |p|
-                packages[package.name] = as_obj ? p : [p.dir, p.spec_path]
+                packages[p.name] = as_obj ? package : [package.dir, package.spec_path]
               end
             end
           end
@@ -143,14 +143,6 @@ module OpenShift
         @name ||= replace_globals(/Name:\s*(.*)/.match(spec_file)[1].strip)
       rescue
         raise @spec_path
-      end
-
-      def build_requires
-        spec_file.lines.to_a.inject([]) do |a,s| 
-          match = s.match(/^\s*BuildRequires:\s*([^\s]*)$/)
-          a << match[1] if match
-          a
-        end
       end
 
       def build_requires
@@ -181,12 +173,12 @@ module OpenShift
       
       def provides
         @provides ||= begin
-          package = /%Provides:\s*(.*)/.match(spec_file)
+          package = /Provides:\s*(.*)/.match(spec_file)
           if package
             package_name = package[1].strip
             package_name.gsub!(/\s.*/, '')
             package_name = replace_globals(package_name)
-            [Subpackage.new(self, package_name)]
+            [Require.new(package_name)]
           else
             []
           end
