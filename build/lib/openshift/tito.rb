@@ -122,7 +122,7 @@ module OpenShift
                 packages[p.name] = as_obj ? p : [p.dir, p.spec_path]
               end
               package.provides.each do |p|
-                packages[p.name] = as_obj ? package : [package.dir, package.spec_path]
+                packages[p.name] = as_obj ? p : [p.dir, p.spec_path]
               end
             end
           end
@@ -178,7 +178,7 @@ module OpenShift
             package_name = package[1].strip
             package_name.gsub!(/\s.*/, '')
             package_name = replace_globals(package_name)
-            [Require.new(package_name)]
+            [Subpackage.new(self, package_name)]
           else
             []
           end
