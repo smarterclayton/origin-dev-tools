@@ -120,7 +120,7 @@ mkdir -p /tmp/rhc/junit
         scp_to(hostname, "/tmp/#{tarname}.tar", "~/", 600, 10, user)
         puts "Done"
         puts "Extracting tests on remote instance: #{hostname}"
-        ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120)
+        ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120, false, 1, user)
         update_test_bundle(hostname, user, 'console', 'site')
         update_cucumber_tests(hostname, repo_parent_dir, user)
         puts "Done"
