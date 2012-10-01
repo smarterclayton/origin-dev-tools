@@ -65,7 +65,7 @@ JENKINS_HOME_DIR = '/var/lib/stickshift/826e5217a6a447b6bcc9ff6a477d324a/app-roo
 SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '../crankcase', JENKINS_HOME_DIR + '/jobs/crankcase/workspace'],
                  'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', JENKINS_HOME_DIR + '/jobs/rhc/workspace'],
                  'origin-dev-tools' => ['../origin-dev-tools']}
-SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/abhgupta/crankcase.git',
+SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/openshift/crankcase.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git'}
 
