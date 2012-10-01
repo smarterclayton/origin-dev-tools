@@ -92,8 +92,8 @@ mkdir -p /tmp/rhc/junit
       puts "Done"
     end
     
-    def scp_remote_tests(hostname, repo_parent_dir="/root", user="root")
-      if FileUtils.pwd == "#{JENKINS_HOME_DIR}/jobs/libra_ami_stage/workspace" || FileUtils.pwd == "#{JENKINS_HOME_DIR}/jobs/libra_ami_verify_stage/workspace"
+    def scp_remote_tests(hostname, use_stage=false, repo_parent_dir="/root", user="root")
+      if use_stage
         init_repo(hostname, true, nil, repo_parent_dir, user)
         update_remote_tests(hostname, "stage", repo_parent_dir, user)
       else
@@ -117,7 +117,7 @@ mkdir -p /tmp/rhc/junit
         `cd /tmp/ && tar -cvf /tmp/#{tarname}.tar #{tarname}` 
         puts "Done"
         puts "Copying tests to remote instance: #{hostname}"
-        scp_to(hostname, "/tmp/#{tarname}.tar", "~/", 600, 10)
+        scp_to(hostname, "/tmp/#{tarname}.tar", "~/", 600, 10, user)
         puts "Done"
         puts "Extracting tests on remote instance: #{hostname}"
         ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120)

@@ -7,12 +7,12 @@ module OpenShift
     def setup_rsa_key
       unless File.exists?(RSA)
         log.info "Setting up RSA key..."
-        libra_key = File.expand_path("../../../../misc/libra.pem", File.expand_path(__FILE__))
-        log.info "Key location = " + libra_key
+        ssh_key = RSA_SOURCE
+        log.info "Key location = " + ssh_key
         log.info "Destination = " + RSA
         FileUtils.mkdir_p File.dirname(RSA)
         FileUtils.chmod 0700, File.dirname(RSA)
-        FileUtils.cp libra_key, RSA
+        FileUtils.cp ssh_key, RSA
         FileUtils.chmod 0600, RSA
       end
     end

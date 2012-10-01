@@ -75,16 +75,16 @@ module Origin
         ssh(hostname, "rm -f #{repo_parent_dir}/li-test/tests; ln -s #{repo_parent_dir}/li-test/stickshift/controller/test/cucumber #{repo_parent_dir}/li-test/tests ;", 60, false, 2, user)
       end
 
-      def setup_verifier(hostname)
+      def setup_verifier(hostname, use_stage_image=false)
         print "Initializing git repo for syncing..."
         init_repo(hostname, true, nil, "~", ssh_user)
         puts "Done"
-        update_remote_tests(hostname, nil, "~", ssh_user)
+        update_remote_tests(hostname, use_stage_image ? "stage" : nil, "~", ssh_user)
       end
 
       def rpm_manifest(hostname, sshuser="root")
         print "Retrieving RPM manifest.."
-        manifest = ssh(hostname, "rpm -qa | grep -E '(rhc|stickshift|swingshift|gearchanger|uplift)'", user=sshuser)
+        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|stickshift|swingshift|gearchanger|uplift)"', 60, false, 1, sshuser)
         manifest = manifest.split("\n").sort.join(" / ")
         # Trim down the output to 255 characters
         manifest.gsub!(/rubygem-([a-z])/, '\1')
@@ -93,7 +93,8 @@ module Origin
         manifest.gsub!('gearchanger-', '')
         manifest.gsub!('stickshift-', 'ss-')
         manifest.gsub!('mcollective-', 'mco-')
-        manifest.gsub!('.fc16.noarch', '')
+        manifest.gsub!('.fc16', '')
+        manifest.gsub!('.noarch', '')
         manifest.gsub!(/\.git\.[a-z0-9\.]+/, '')
         manifest = manifest[0..254]
         puts "Done"
@@ -332,16 +333,15 @@ module Origin
           puts "Performing remote install..."
 
           out, ret = ssh(hostname, "rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user) if ret == 0
-          out, ret = ssh(hostname, "rm -rf origin-dev-tools; mv origin-dev-tools-working origin-dev-tools", 60, true, 1, ssh_user)
 
           if options.clean_metadata? and ret == 0
             out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user)
           end
           
-          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools-working; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
 
           if options.clean_metadata? and ret == 0
-            out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*; " : ''}\"", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*; " : ''}\"", 60 * 15, true, 1, ssh_user)
           end
 
           puts "Restarting services..."
@@ -373,8 +373,10 @@ module Origin
           if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
             puts "Starting yum update..."
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 10, true, 1, ssh_user)
-            puts "Installing packages required for build..."
-            out, ret = ssh(hostname, "su -c \"yum install -y git vim rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user) if ret == 0
+            if ret == 0
+              puts "Installing packages required for build..."
+              out, ret = ssh(hostname, "su -c \"yum install -y git vim rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user)
+            end
             if ret == 0
               puts "Creating mount..."
               out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
@@ -394,7 +396,7 @@ module Origin
                   clone_commands += "pushd #{repo_name}-working; git checkout stage; popd; " if options.use_stage_repo?
                 end
               end
-              out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 2, true, 2, ssh_user)
+              out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
             end
             puts "Done"
       
@@ -431,7 +433,7 @@ module Origin
             out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake devbroker", 60 * 20, true, 1, ssh_user) if ret == 0
           end
           
-          out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user *\"", 60 * 2, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user .\"", 60 * 2, true, 1, ssh_user) if ret == 0
           puts "Done"
       
           if ret != 0
@@ -456,7 +458,7 @@ module Origin
             puts "Running broker setup..."
             out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 10, true, 1, ssh_user) if ret == 0
 
-            scp_remote_tests(hostname, "~", ssh_user)
+            scp_remote_tests(hostname, options.use_stage_repo, "~", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
           puts "Done."

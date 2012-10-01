@@ -154,7 +154,7 @@ module StickShift
 
       update_facts_impl(hostname)
       post_launch_setup(hostname)
-      setup_verifier(hostname) if options.verifier?
+      setup_verifier(hostname, options.use_stage_image) if options.verifier?
 
       validate_instance(hostname, 4)
 

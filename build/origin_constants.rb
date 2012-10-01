@@ -1,7 +1,13 @@
 #
 # Global definitions
 #
-AMI = {"us-east-1" =>"ami-2ea50247"}
+
+# Fedora 16 image
+AMI = {"us-east-1" =>"ami-0316d86a"}
+
+# Fedora 17 image
+#AMI = {"us-east-1" =>"ami-2ea50247"}
+
 TYPE = "m1.large"
 KEY_PAIR = "libra"
 ZONE = 'us-east-1d'
@@ -41,7 +47,12 @@ VERIFIER_REGEXS = {/^(oso-fedora)_(\d+)$/ => {},
                    /^(libra_coverage)_(\d+)$/ => {:max_run_time => (60*60*1)}}
 TERMINATE_REGEX = /terminate|teminate|termiante|terminatr|terninate/
 VERIFIED_TAG = "qe-ready"
-RSA = File.expand_path("~/.ssh/libra.pem")
+
+# Specify the source location of the SSH key
+# This will be used if the key is not found at the location specified by "RSA"
+RSA = File.expand_path("~/.ssh/devenv.pem")
+RSA_SOURCE = ""
+
 SAUCE_USER = ""
 SAUCE_SECRET = ""
 SAUCE_OS = ""
@@ -49,12 +60,12 @@ SAUCE_BROWSER = ""
 SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
 
-JENKINS_HOME_DIR = '/var/lib/stickshift/ci-origin/app-root/data'
+JENKINS_HOME_DIR = '/var/lib/stickshift/826e5217a6a447b6bcc9ff6a477d324a/app-root/data'
 
 SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '../crankcase', JENKINS_HOME_DIR + '/jobs/crankcase/workspace'],
                  'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', JENKINS_HOME_DIR + '/jobs/rhc/workspace'],
                  'origin-dev-tools' => ['../origin-dev-tools']}
-SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/openshift/crankcase.git',
+SIBLING_REPOS_GIT_URL = {'crankcase' => 'https://github.com/abhgupta/crankcase.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'git@github.com:openshift/origin-dev-tools.git'}
 
