@@ -48,23 +48,19 @@ module Origin
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
         `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
-        scp_from(hostname, "/tmp/rhc/*", "rhc/log")
-        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log")
-        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log")
-        scp_from(hostname, "/var/www/stickshift/broker/log/*", "rhc/log/broker")
-        scp_from(hostname, "/var/log/stickshift/user_action.log", "rhc/log/broker/user_action.log")
-        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective")
-        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log")
-        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log")
-        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log")
-        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log")
-        scp_from(hostname, "/var/log/dmesg", "rhc/log/system/dmesg.log")
-        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log")
-        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log")
-        scp_from(hostname, "/var/lib/stickshift/*/*/jbossas-7/standalone/tmp/*.log", "rhc/log/jbossas")
-        scp_from(hostname, "/tmp/rhc/benchmark.csv", "rhc/log")
-        scp_from(hostname, "/tmp/broker-profiler/*", "rhc/log/broker-profiler")
-        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage")
+        scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
+        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/www/stickshift/broker/log/*", "rhc/log/broker", 60, ssh_user)
+        scp_from(hostname, "/var/log/stickshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, ssh_user)
+        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, ssh_user)
+        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
+        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
         puts "Done"
       end
       
@@ -245,7 +241,6 @@ module Origin
                 case extended_test
                 when 'broker'
                 when 'runtime'
-                  #idle_all_gears(hostname)
                   singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton li-test/tests\""]
                   output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1], timeout=@@SSH_TIMEOUT, ssh_user)
                   retry_test_failures(hostname, [singleton_queue], 2, timeout=@@SSH_TIMEOUT, ssh_user) if 0 != exit_code
@@ -259,11 +254,6 @@ module Origin
             end
   
             validate_instance(hostname, 4)
-          ensure
-            if options.include_web?
-              cmd = "service sauce-connect stop"
-              run_ssh(hostname, "Stop sauce connect tunnel", cmd, timeout)
-            end
           end
   
           if options.official?
@@ -278,21 +268,13 @@ module Origin
             rescue Exception => e
               puts "Failed sending email with message: #{e.message}"
             end
-          elsif !options.terminate?
-            #idle_all_gears(hostname)
           end
-  
-          #broker_profiler(hostname, enable=false) if options.profile_broker?
   
           puts "Done"
   
         ensure
-          if options.terminate? || options.official?
-            download_artifacts(hostname)
-          end
-          if options.terminate?
-            terminate_instance(instance)
-          end
+          download_artifacts(hostname)
+          terminate_instance(instance) if options.terminate?
         end
       end
       
