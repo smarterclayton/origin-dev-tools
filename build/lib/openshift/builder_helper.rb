@@ -85,7 +85,6 @@ rm -rf #{repo_parent_dir}/li-test
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
 
-      #ssh(hostname, %{cd ~/li-test; find -name Gemfile.lock | xargs -L 1 dirname | xargs -t -L 1 -I {} sh -c "pushd {}; rm Gemfile.lock; scl enable ruby193 \\"bundle install --local\\"; touch Gemfile.lock; popd;"}, 60, false, 1, user)
       update_test_bundle(hostname, user, 'console', 'site')
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
@@ -167,8 +166,11 @@ mkdir -p /tmp/rhc/junit
     end
 
     def update_test_bundle(hostname, user, *dirs)
-      #ssh(hostname, %{cd ~/li-test; find -name Gemfile.lock | xargs -L 1 dirname | xargs -t -L 1 -I {} sh -c "pushd {}; rm Gemfile.lock; scl enable ruby193 \\"bundle install --local\\"; touch Gemfile.lock; popd;"}, 60, false, 1, user)
-      dirs.each{ |dir| ssh(hostname, %{cd ~/li-test/#{dir}; rm Gemfile.lock; scl enable ruby193 "bundle install --local"; touch Gemfile.lock;}, 60, false, 1, user) }
+      cmd = ""
+      dirs.each do |dir|
+        cmd += "cd ~/li-test/#{dir}; rm Gemfile.lock; scl enable ruby193 \"bundle install --local\"; touch Gemfile.lock;\n"
+      end
+      ssh(hostname, cmd, 60, false, 1, user)
     end
 
     # clones crankcase/rhc over to remote;
