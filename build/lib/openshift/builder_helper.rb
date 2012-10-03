@@ -85,7 +85,7 @@ rm -rf #{repo_parent_dir}/li-test
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
 
-      update_test_bundle(hostname, user, 'console', 'site')
+      #update_test_bundle(hostname, user, 'console', 'site')
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
@@ -120,7 +120,7 @@ mkdir -p /tmp/rhc/junit
         puts "Done"
         puts "Extracting tests on remote instance: #{hostname}"
         ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120, false, 1, user)
-        update_test_bundle(hostname, user, 'console', 'site')
+        #update_test_bundle(hostname, user, 'console', 'site')
         update_cucumber_tests(hostname, repo_parent_dir, user)
         puts "Done"
         FileUtils.rm_rf tmpdir
