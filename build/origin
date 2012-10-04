@@ -356,8 +356,10 @@ module Origin
         ret, out = 0, nil
         begin
           if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
-            puts "Starting yum update..."
-            out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 10, true, 1, ssh_user)
+            if options.install_required_packages?
+              puts "Starting yum update..."
+              out, ret = ssh(hostname, "su -c \"yum -y update --exclude='ruby-qpid-* qpid-*'\"", 60 * 10, true, 1, ssh_user)
+            end
             if ret == 0
               puts "Installing packages required for build..."
               out, ret = ssh(hostname, "su -c \"yum install -y git vim rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user)
@@ -407,10 +409,10 @@ module Origin
               end
             end
         
-            puts "Running build_setup script..."
+            puts "Installing pre-requisite packages"
             out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake build_setup", 60 * 20, true, 1, ssh_user) if ret == 0
             puts "Downgrading qpid version..."
-            out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf qpid-client-devel ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 60 * 10, false, 1, ssh_user) if ret == 0
+            out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user) if ret == 0
           end
           
           if options.install_from_source? || options.install_from_local_source?
