@@ -314,6 +314,7 @@ module Origin
         clone_commands, working_dirs = sync_available_sibling_repos(hostname, "~", ssh_user)
         update_remote_tests(hostname, nil, "~", ssh_user)
         
+        ret = 0
         if !options.skip_build?
           puts "Performing remote install..."
 
