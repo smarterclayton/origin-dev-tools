@@ -129,7 +129,7 @@ module Origin
                 test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 li-test/tests\"", {:retry_individually => true}]
                 
                 # The broker_key initializer in controller needs to be fixed before the test below can pass
-                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd li-test/broker; bundle exec rake test:ss_unit_ext1", {:retry_individually => true}]
+                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd li-test/broker; bundle exec rake test:oo_unit_ext1", {:retry_individually => true}]
               when 'runtime'
                 test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 li-test/tests\""]
                 test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 li-test/tests\""]
@@ -176,11 +176,11 @@ module Origin
             unless options.exclude_broker?
               test_queues[0] << ["OpenShift Origin Broker Functional", "cd li-test/broker; bundle exec rake test:functionals"]
               test_queues[1] << ["OpenShift Origin Broker Integration", "cd li-test/broker; bundle exec rake test:integration"]
-              test_queues[2] << ["OpenShift Origin Broker Unit 1", "cd li-test/broker; bundle exec rake test:ss_unit1"]
+              test_queues[2] << ["OpenShift Origin Broker Unit 1", "cd li-test/broker; bundle exec rake test:oo_unit1"]
               test_queues[3] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin li-test/tests\""]
 
               # The broker_key initializer in controller needs to be fixed before the test below can pass
-              #test_queues[3] << ["OpenShift Origin Broker Unit 2", "cd li-test/broker; bundle exec rake test:ss_unit2"]
+              #test_queues[3] << ["OpenShift Origin Broker Unit 2", "cd li-test/broker; bundle exec rake test:oo_unit2"]
             end
 
             unless options.exclude_runtime?
