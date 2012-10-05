@@ -11,7 +11,7 @@ require 'yaml'
 
 include FileUtils
 
-module StickShift
+module OpenShift
   class Builder < Thor
     include OpenShift::BuilderHelper
 

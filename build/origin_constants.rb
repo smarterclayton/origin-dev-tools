@@ -60,7 +60,7 @@ SAUCE_BROWSER = ""
 SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
 
-JENKINS_HOME_DIR = '/var/lib/stickshift/826e5217a6a447b6bcc9ff6a477d324a/app-root/data'
+JENKINS_HOME_DIR = '/var/lib/openshift/826e5217a6a447b6bcc9ff6a477d324a/app-root/data'
 
 SIBLING_REPOS = {'crankcase' => ['../crankcase-working', '../crankcase-fork', '../crankcase', JENKINS_HOME_DIR + '/jobs/crankcase/workspace'],
                  'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', JENKINS_HOME_DIR + '/jobs/rhc/workspace'],
