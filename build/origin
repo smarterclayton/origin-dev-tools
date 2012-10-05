@@ -49,10 +49,10 @@ module Origin
         puts "Downloading logs and screenshots..."
         `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
-        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/stickshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/stickshift/broker/log/*", "rhc/log/broker", 60, ssh_user)
-        scp_from(hostname, "/var/log/stickshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
+        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log", 60, ssh_user)
+        scp_from(hostname, "/var/www/openshift/broker/log/*", "rhc/log/broker", 60, ssh_user)
+        scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
         scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, ssh_user)
         scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
         scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, ssh_user)
@@ -68,7 +68,7 @@ module Origin
       end
       
       def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
-        ssh(hostname, "rm -f #{repo_parent_dir}/li-test/tests; ln -s #{repo_parent_dir}/li-test/stickshift/controller/test/cucumber #{repo_parent_dir}/li-test/tests ;", 60, false, 2, user)
+        ssh(hostname, "rm -f #{repo_parent_dir}/li-test/tests; ln -s #{repo_parent_dir}/li-test/controller/test/cucumber #{repo_parent_dir}/li-test/tests ;", 60, false, 2, user)
       end
 
       def setup_verifier(hostname, use_stage_image=false)
@@ -80,14 +80,11 @@ module Origin
 
       def rpm_manifest(hostname, sshuser="root")
         print "Retrieving RPM manifest.."
-        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|stickshift|swingshift|gearchanger|uplift)"', 60, false, 1, sshuser)
+        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|openshift)"', 60, false, 1, sshuser)
         manifest = manifest.split("\n").sort.join(" / ")
         # Trim down the output to 255 characters
         manifest.gsub!(/rubygem-([a-z])/, '\1')
-        manifest.gsub!('swingshift-', '')
-        manifest.gsub!('uplift-', '')
-        manifest.gsub!('gearchanger-', '')
-        manifest.gsub!('stickshift-', 'ss-')
+        manifest.gsub!('openshift-', '')
         manifest.gsub!('mcollective-', 'mco-')
         manifest.gsub!('.fc16', '')
         manifest.gsub!('.noarch', '')
@@ -131,8 +128,8 @@ module Origin
                 test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 li-test/tests\"", {:retry_individually => true}]
                 test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 li-test/tests\"", {:retry_individually => true}]
                 
-                # The broker_key initializer in stickshift/controller needs to be fixed before the test below can pass
-                #test_queues[3] << ["StickShift Broker Unit Ext 1", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit_ext1", {:retry_individually => true}]
+                # The broker_key initializer in controller needs to be fixed before the test below can pass
+                #test_queues[3] << ["StickShift Broker Unit Ext 1", "cd li-test/broker; bundle exec rake test:ss_unit_ext1", {:retry_individually => true}]
               when 'runtime'
                 test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 li-test/tests\""]
                 test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 li-test/tests\""]
@@ -166,8 +163,8 @@ module Origin
               end
             end
           elsif options.include_rcov?
-            test_queues[0] << ["StickShift Node Unit Coverage", "cd li-test/stickshift/node; rake rcov; cp -a coverage /tmp/rhc/stickshift_node_coverage"]
-            test_queues[1] << ["StickShift Broker Unit and Functional Coverage", "cd li-test/stickshift/broker; rake rcov; cp -a test/coverage /tmp/rhc/stickshift_broker_coverage"]
+            test_queues[0] << ["StickShift Node Unit Coverage", "cd li-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
+            test_queues[1] << ["StickShift Broker Unit and Functional Coverage", "cd li-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
           elsif options.include_cucumber
             timeout = @@SSH_TIMEOUT
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
@@ -177,17 +174,17 @@ module Origin
           else
   
             unless options.exclude_broker?
-              test_queues[0] << ["StickShift Broker Functional", "cd li-test/stickshift/broker; bundle exec rake test:functionals"]
-              test_queues[1] << ["StickShift Broker Integration", "cd li-test/stickshift/broker; bundle exec rake test:integration"]
-              test_queues[2] << ["StickShift Broker Unit 1", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit1"]
+              test_queues[0] << ["StickShift Broker Functional", "cd li-test/broker; bundle exec rake test:functionals"]
+              test_queues[1] << ["StickShift Broker Integration", "cd li-test/broker; bundle exec rake test:integration"]
+              test_queues[2] << ["StickShift Broker Unit 1", "cd li-test/broker; bundle exec rake test:ss_unit1"]
               test_queues[3] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin li-test/tests\""]
 
-              # The broker_key initializer in stickshift/controller needs to be fixed before the test below can pass
-              #test_queues[3] << ["StickShift Broker Unit 2", "cd li-test/stickshift/broker; bundle exec rake test:ss_unit2"]
+              # The broker_key initializer in controller needs to be fixed before the test below can pass
+              #test_queues[3] << ["StickShift Broker Unit 2", "cd li-test/broker; bundle exec rake test:ss_unit2"]
             end
 
             unless options.exclude_runtime?
-              #test_queues[3] << ["Runtime Unit", "cd li-test/stickshift/node; su -c \"rake unit_test\""]
+              #test_queues[3] << ["Runtime Unit", "cd li-test/node; su -c \"rake unit_test\""]
               (1..4).each do |i|
                 test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} li-test/tests\""]
               end
@@ -303,8 +300,7 @@ module Origin
             build_and_install(package_name, build_dir, spec_file)
           end
         end
-        #run("yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*", :verbose => options.verbose?)
-        run("/sbin/service mcollective restart; /sbin/service stickshift-broker restart", :verbose => options.verbose?)
+        run("/sbin/service mcollective restart; /sbin/service openshift-broker restart", :verbose => options.verbose?)
       end
 
       def sync_impl(name, options)
@@ -326,7 +322,7 @@ module Origin
           out, ret = ssh(hostname, "su -c \"cd origin-dev-tools-working; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
 
           if options.clean_metadata? and ret == 0
-            out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc cartridge-* rubygem-stickshift-* rubygem-gearchanger-* rubygem-uplift-* rubygem-swingshift-*; " : ''}\"", 60 * 15, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user)
           end
 
           puts "Restarting services..."
@@ -458,8 +454,8 @@ module Origin
         titles = ["StickShift Broker Sanity",
                   "StickShift Node Unit"]
     
-        cmds = ["su -c \"cd /var/www/stickshift/broker; bundle exec rake test:sanity\"",
-                "cd li-test/stickshift/node; su -c \"rake unit_test\""]
+        cmds = ["su -c \"cd /var/www/openshift/broker; bundle exec rake test:sanity\"",
+                "cd li-test/node; su -c \"rake unit_test\""]
         add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, ssh_user)
         add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity li-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
     
