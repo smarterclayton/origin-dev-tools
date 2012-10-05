@@ -173,7 +173,7 @@ mkdir -p /tmp/rhc/junit
       ssh(hostname, cmd, 60, false, 1, user)
     end
 
-    # clones crankcase/rhc over to remote;
+    # clones origin-server/rhc over to remote;
     # returns command to run remotely for cloning to standard -working dirs,
     # plus the names of those working dirs
     def sync_available_sibling_repos(hostname, remote_repo_parent_dir="/root", ssh_user="root")

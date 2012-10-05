@@ -33,7 +33,7 @@ module Origin
   
       begin
         puts "Launching live-cd build..."
-        out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/crankcase/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
+        out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/origin-server/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
         puts "Done"
       ensure
         terminate_instance(instance) if options.terminate?
@@ -392,13 +392,13 @@ module Origin
             
             if options[:extra_rpm_dir]
               if File.exist? options[:extra_rpm_dir]
-                out, ret = ssh(hostname, "mkdir -p /data/crankcase-working/build/extras", 60, true, 1, ssh_user)
+                out, ret = ssh(hostname, "mkdir -p /data/origin-server-working/build/extras", 60, true, 1, ssh_user)
                 files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
                 files.each do |file|
-                  scp_to(hostname, file, "/data/crankcase-working/build/extras/", 60*10, 5, ssh_user)
+                  scp_to(hostname, file, "/data/origin-server-working/build/extras/", 60*10, 5, ssh_user)
                 end
           
-                out, ret = ssh(hostname, "su -c \"cd /data/crankcase-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
+                out, ret = ssh(hostname, "su -c \"cd /data/origin-server-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
               else
                 puts "!!!Warning!!!"
                 puts "Directory containing extra rpms not found. Skipping..."
@@ -407,14 +407,14 @@ module Origin
             end
         
             puts "Installing pre-requisite packages"
-            out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake build_setup", 60 * 20, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "cd /data/origin-server-working/build && rake build_setup", 60 * 20, true, 1, ssh_user) if ret == 0
             puts "Downgrading qpid version..."
             out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user) if ret == 0
           end
           
           if options.install_from_source? || options.install_from_local_source?
             puts "Running devbroker script..."
-            out, ret = ssh(hostname, "cd /data/crankcase-working/build && rake devbroker", 60 * 20, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "cd /data/origin-server-working/build && rake devbroker", 60 * 20, true, 1, ssh_user) if ret == 0
           end
           
           out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user .\"", 60 * 2, true, 1, ssh_user) if ret == 0
