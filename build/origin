@@ -327,7 +327,7 @@ module Origin
           end
 
           puts "Restarting services..."
-          out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 5, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 5, true, 1, ssh_user)
         end
 
         if ret != 0
@@ -440,7 +440,7 @@ module Origin
     
           unless options.skip_verify? || options.install_required_packages?
             puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 10, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 10, true, 1, ssh_user) if ret == 0
 
             scp_remote_tests(hostname, options.use_stage_repo, "~", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
@@ -473,12 +473,12 @@ module Origin
       end
       
       def update_facts_impl(hostname)
-        # Not required since this is handled by ss-setup-broker script
+        # Not required since this is handled by oo-setup-broker script
       end
       
       def post_launch_setup(hostname)
         puts "Running broker setup..."
-        out, ret = ssh(hostname, "su -c /usr/bin/ss-setup-broker", 60 * 5, true, 1, ssh_user)
+        out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 5, true, 1, ssh_user)
         puts "Done"
 
         if ret != 0
