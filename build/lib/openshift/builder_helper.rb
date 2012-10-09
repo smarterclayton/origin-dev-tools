@@ -205,6 +205,64 @@ mkdir -p /tmp/rhc/junit
       ssh(hostname, git_clone_commands, 240, false, 10, ssh_user)
     end
 
+    def get_required_packages
+      required_packages_str = ""
+      packages = get_sorted_package_names
+      ignore_packages = get_ignore_packages
+
+      SIBLING_REPOS.each do |repo_name, repo_dirs|
+        repo_dirs.each do |repo_dir|
+          exists = File.exists?(repo_dir)
+          inside(repo_dir) do
+            spec_file_list = `find -name *.spec`.split("\n")
+            spec_file_list.each do |spec_file|
+              package = Package.new(spec_file, File.dirname(spec_file))
+              package_name = package.name
+              unless ignore_packages.include?(package.name)
+                required_packages = package.build_requires + package.requires
+                required_packages.each do |r_package|
+                  required_packages_str += " \"#{r_package.yum_name_with_version}\"" unless packages.include?(r_package.name)
+                end
+              end
+            end
+          end if exists
+        end
+      end
+      required_packages_str
+    end
+
+    def get_sorted_package_names
+      packages = get_packages(true)
+      packages_str = ""
+      packages.keys.sort.each do |package_name|
+        packages_str += " #{package_name}"
+      end
+      packages_str
+    end
+
+    def get_ignore_packages(include_unmodified=false)
+      packages_str = ""
+      IGNORE_PACKAGES.each do |package_name|
+        packages_str += " #{package_name}"
+      end
+
+      if options.include_unmodified?
+        build_dirs = get_build_dirs
+
+        all_packages = get_packages
+        build_dirs.each do |build_info|
+          package_name = build_info[0]
+          all_packages.delete(package_name)
+        end
+
+        all_packages.keys.each do |package_name|
+          packages_str += " #{package_name}"
+        end
+      end
+
+      packages_str
+    end
+
     def temp_commit
       # Warn on uncommitted changes
       `git diff-index --quiet HEAD`

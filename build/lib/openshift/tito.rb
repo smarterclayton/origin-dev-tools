@@ -147,7 +147,15 @@ module OpenShift
       def build_requires
         @build_requires ||= spec_file.lines.to_a.inject([]) do |a,s|
           match = s.match(/^\s*BuildRequires:\s*(.+)$/)
-          a << Require.new(match[1]) if match
+          a << Require.new(replace_globals(match[1])) if match
+          a
+        end
+      end
+
+      def requires
+        @requires ||= spec_file.lines.to_a.inject([]) do |a,s|
+          match = s.match(/^\s*Requires:\s*(.+)$/)
+          a << Require.new(replace_globals(match[1])) if match
           a
         end
       end
@@ -251,6 +259,13 @@ module OpenShift
           gsub(/\)/, '').
           gsub(/>=.+/, '').
           gsub(/=/,'-').
+          gsub(/,/, '').
+          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+      end
+      def yum_name_with_version
+        @yum_name ||= value.
+          gsub(/\(/, '-').
+          gsub(/\)/, '').
           gsub(/,/, '').
           gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
       end

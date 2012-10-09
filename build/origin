@@ -444,7 +444,7 @@ EOF
             end
             if ret == 0
               puts "Installing packages required for build..."
-              out, ret = ssh(hostname, "su -c \"yum install -y git vim rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user)
             end
             if ret == 0
               puts "Creating mount..."
@@ -492,7 +492,7 @@ EOF
             end
         
             puts "Installing pre-requisite packages"
-            out, ret = ssh(hostname, "cd /data/origin-server-working/build && rake build_setup", 60 * 20, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && build/origin install_required_packages", 60 * 30, true, 1, ssh_user) if ret == 0
             puts "Downgrading qpid version..."
             out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user) if ret == 0
           end
