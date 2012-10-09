@@ -46,6 +46,7 @@ module Origin
       FileUtils.rm_rf "/root/origin-rpms"
       FileUtils.rm_rf "/tmp/tito"
       packages = get_packages(false, true).values
+      run("yum clean all", options)
       
       package_names = "\"#{packages.join("\" \"")}\""
       puts "Removing stale packages..."
@@ -66,7 +67,7 @@ module Origin
       
       packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }
       package_names = "\"#{packages_to_install.join("\" \"")}\""
-      run("yum install -y #{package_names} --enablerepo=openshift-origin",options)
+      run("yum install -y #{package_names}",options)
     end
 
     no_tasks do
@@ -78,7 +79,7 @@ module Origin
 name    = openshift-origin
 baseurl = file:///root/origin-rpms
 gpgcheck= 0
-enabled = 0
+enabled = 1
 retries = 0
 
 [openshift-origin-nightly]
