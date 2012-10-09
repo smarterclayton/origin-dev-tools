@@ -3,7 +3,7 @@ require 'fileutils'
 DEVENV_REGEX = /^rhc-devenv-\d+/
   
 PACKAGE_REGEX = /^([\w\.-]*)-\d+\.\d+\.\d+-\d+\.\..*:$/
-IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'openshift-origin-broker', 'rubygem-openshift-origin-auth-mongo', 'rubygem-openshift-origin-dns-bind', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node', 'rubygem-openshift-origin-auth-kerberos', 'cartridge-postgresql-9.1', 'cartridge-php-5.4']
+IGNORE_PACKAGES = ['bind-local', 'rubygem-rhc', 'openshift-origin-broker', 'rubygem-openshift-origin-auth-mongo', 'rubygem-openshift-origin-dns-bind', 'openshift-origin', 'openshift-origin-broker', 'openshift-origin-node', 'openshift-origin-node-util', 'rubygem-openshift-origin-auth-kerberos', 'cartridge-postgresql-9.1', 'cartridge-php-5.4']
 SKIP_PREREQ_PACKAGES = ['java-devel']
 
 module OpenShift
