@@ -71,4 +71,13 @@ SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin
 
 CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
+redhat_release = File.open("/etc/redhat-release").read
+ignore_packages = ['openshift-origin-node-util', 'rubygem-openshift-origin-auth-kerberos', 'rubygem-openshift-origin-console']
+ignore_packages << "openshift-origin-cartridge-ruby-1.9-scl" if redhat_release.match(/Fedora/)
+ignore_packages << "openshift-origin-cartridge-jbosseap-6.0" if `yum search jboss-eap6 2> /dev/null`.match(/No Matches found/)
+ignore_packages << "openshift-origin-cartridge-jbossas-7" if `yum search jboss-as7 2> /dev/null`.match(/No Matches found/)
+ignore_packages << "openshift-origin-cartridge-jenkins-1.4" if `yum search jenkins-plugin-openshift 2> /dev/null`.match(/No Matches found/)
+ignore_packages << "openshift-origin-cartridge-nodejs-0.6" if `yum search nodejs-supervisor 2> /dev/null`.match(/No Matches found/)
+
+IGNORE_PACKAGES = ignore_packages
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}

@@ -39,8 +39,92 @@ module Origin
         terminate_instance(instance) if options.terminate?
       end
     end
+    
+    desc "local_build", "Builds and installs all packages locally"
+    def local_build
+      FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
+      FileUtils.rm_rf "/root/origin-rpms"
+      FileUtils.rm_rf "/tmp/tito"
+      packages = get_packages(false, true).values
+      
+      package_names = "\"#{packages.join("\" \"")}\""
+      puts "Removing stale packages..."
+      run("yum erase -y #{package_names}",options)
+      puts "Updating all packages on the system..."
+      run("yum update -y --exclude='rhc*,ruby-*,qpid-*'; yum -y install openssh-clients yum-priorities", options)
+      puts "Done"
 
-    no_tasks do  
+      File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
+        out << repo_string
+      end
+      
+      find_and_build_specs
+      
+      FileUtils.rm_rf "/root/origin-rpms"
+      FileUtils.mkdir_p "/root/origin-rpms"
+      run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
+      
+      packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }
+      package_names = "\"#{packages_to_install.join("\" \"")}\""
+      run("yum install -y #{package_names} --enablerepo=openshift-origin",options)
+    end
+
+    no_tasks do
+      def repo_string
+      redhat_release = File.open("/etc/redhat-release").read
+        if redhat_release.match(/Fedora/)
+        <<-EOF
+[openshift-origin]
+name    = openshift-origin
+baseurl = file:///root/origin-rpms
+gpgcheck= 0
+enabled = 0
+retries = 0
+
+[openshift-origin-nightly]
+name    = openshift-origin-nightly
+baseurl = http://mirror.openshift.com/pub/crankcase/fedora-$releasever/$basearch
+gpgcheck= 0
+enabled = 1
+retries = 0
+
+[fedora-ruby]
+name    = fedora-ruby
+baseurl = http://mirror.openshift.com/pub/fedora-ruby/$basearch
+gpgcheck= 0
+enabled = 1
+retries = 0
+
+[openshift]
+name=Openshift
+baseurl=https://openshift.redhat.com/app/repo/rpms/$releasever/$basearch/
+failovermethod=priority
+skip_if_unavailable=1
+gpgkey=https://openshift.redhat.com/app/repo/RPM-GPG-KEY-redhat-beta
+ggpkey=https://openshift.redhat.com/app/repo/RPM-GPG-KEY-redhat-release
+enabled=1
+gpgcheck=1
+retries = 0
+EOF
+        else
+        <<-EOF
+[openshift-origin]
+name    = openshift-origin
+baseurl = file://#{rpmdir}/noarch
+gpgcheck= 0
+enabled = 1
+retries = 0
+
+[openshift-origin-nightly]
+name    = openshift-origin-nightly
+baseurl = http://mirror.openshift.com/pub/crankcase/rhel-6/$basearch
+gpgcheck= 0
+enabled = 1
+retries = 0
+EOF
+        end
+      end
+      
       def ssh_user
         return "ec2-user"
       end

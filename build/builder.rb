@@ -24,6 +24,62 @@ module OpenShift
         # Child classes can override, if required
       end
     end
+    
+    desc "find_and_build_specs", "Builds all non ignored specs in the current directory"
+    def find_and_build_specs
+      packages = get_packages(false, true).values
+      buildable = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }.select do |p|
+        Dir.chdir(p.dir) { system "git tag | grep '#{p.name}' 2>&1 1>/dev/null" }.tap do |r|
+          puts "\n\nSkipping '#{p.name}' in '#{p.dir}' since it is not tagged.\n" unless r
+        end
+      end
+
+      # packages not in source
+      installed = buildable.map(&:build_requires).flatten(1).uniq.sort - buildable
+
+      phases = []
+      while not buildable.empty?
+        # separate packages that depend on other packages
+        installable, has_dependencies = buildable.partition do |p|
+          (p.build_requires & buildable).empty? #.any?{ |req| buildable.any?{ |b| req === b } }
+        end
+        begin
+          installable, is_dependent = installable.partition do |p|
+            (p.build_requires & has_dependencies).empty? #.any?{ |name| has_dependencies.any?{ |b| name == b.name } }
+          end
+          has_dependencies.concat(is_dependent)
+        end while not is_dependent.empty?
+
+        raise "The packages remaining to install #{dependencies.inspect} have mutual dependencies" if installable.empty?
+
+        phases << installable
+
+        buildable = has_dependencies
+      end
+
+      prereqs = installed.map(&:yum_name) - SKIP_PREREQ_PACKAGES
+      puts "\n\nExcluded prereqs\n  #{SKIP_PREREQ_PACKAGES.join("\n  ")}" unless SKIP_PREREQ_PACKAGES.empty?
+      puts "\n\nInstalling all prereqs\n  #{prereqs.join("\n  ")}"
+      raise "Unable to install prerequisite packages" unless system "yum install -y #{prereqs.join(' ')}"
+
+      prereqs = (phases[1..-1] || []).flatten(1).map(&:build_requires).flatten(1).uniq.sort - installed
+      puts "\nPackages that are prereqs for later phases\n  #{prereqs.join("\n  ")}"
+
+      phases.each_with_index do |phase,i|
+        puts "\n#{'='*60}\n\nBuilding phase #{i+1} packages"
+        phase.sort.each do |package|
+          Dir.chdir(package.dir) do
+            puts "\n#{'-'*60}"
+            raise "Unable to build #{package.name}" unless system "tito build --rpm --test"
+            if prereqs.include? package
+              puts "\n    Installing..."
+              #FileUtils.rm_rf "/tmp/tito/**"
+              raise "Unable to install package #{package.name}" unless system("rpm -Uvh --force /tmp/tito/noarch/#{package}*.rpm")
+            end
+          end
+        end
+      end
+    end
 
     desc "build NAME BUILD_NUM", "Build a new devenv AMI with the given NAME"
     method_option :register, :type => :boolean, :desc => "Register the instance"
