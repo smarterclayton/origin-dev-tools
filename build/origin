@@ -49,9 +49,10 @@ module Origin
       FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
       FileUtils.rm_rf "/tmp/tito"
       
+      packages = get_packages(false, true).values
+
       if options.clean_packages?
         run("yum clean all", options)
-        packages = get_packages(false, true).values
         package_names = "\"#{packages.join("\" \"")}\""
         puts "Removing stale packages..."
         run("yum erase -y #{package_names}", options)
@@ -435,9 +436,10 @@ EOF
         $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
 
         puts "Launching AMI: #{image.id} - #{image.name}"
-        instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
-        
-        hostname = instance.dns_name
+        #instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
+
+        hostname = "ec2-23-23-53-110.compute-1.amazonaws.com "
+        #hostname = instance.dns_name
         puts "Done"
         puts "Hostname: #{hostname}"
     
