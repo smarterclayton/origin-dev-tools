@@ -43,38 +43,46 @@ module Origin
     desc "local_build", "Builds and installs all packages locally"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :clean_packages, :type => :boolean, :desc => "Erase existing packages before install?"
+    method_option :incremental, :type => :boolean, :desc => "Build only the changed packages"
     def local_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      if options.incremental
+        options.retry_failure_with_tag = false
+        update_impl(options)
+      else
+        FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
+        FileUtils.rm_rf "/tmp/tito"
+        
+        packages = get_packages(false, true).values
 
-      FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
-      FileUtils.rm_rf "/tmp/tito"
-      
-      packages = get_packages(false, true).values
+        if options.clean_packages?
+          run("yum clean all", options)
+          package_names = "\"#{packages.join("\" \"")}\""
+          puts "Removing stale packages..."
+          run("yum erase -y #{package_names}", options)
+        end
 
-      if options.clean_packages?
-        run("yum clean all", options)
-        package_names = "\"#{packages.join("\" \"")}\""
-        puts "Removing stale packages..."
-        run("yum erase -y #{package_names}", options)
+        puts "Updating all packages on the system..."
+        run("yum update -y --exclude='rhc*,ruby-*,qpid-*'; yum -y install openssh-clients yum-priorities", options)
+        puts "Done"
+
+        find_and_build_specs
+        
+        File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
+          out << repo_string
+        end
+        
+        FileUtils.rm_rf "/root/origin-rpms"
+        FileUtils.mkdir_p "/root/origin-rpms"
+        run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
+        
+        packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
+        package_list = "\"#{packages_to_install.join("\" \"")}\""
+        run("yum install -y #{package_list}", options)
+
+        #mark all packages as sync'd
+        get_sync_dirs
       end
-
-      puts "Updating all packages on the system..."
-      run("yum update -y --exclude='rhc*,ruby-*,qpid-*'; yum -y install openssh-clients yum-priorities", options)
-      puts "Done"
-
-      find_and_build_specs
-      
-      File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
-        out << repo_string
-      end
-      
-      FileUtils.rm_rf "/root/origin-rpms"
-      FileUtils.mkdir_p "/root/origin-rpms"
-      run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
-      
-      packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
-      package_list = "\"#{packages_to_install.join("\" \"")}\""
-      run("yum install -y #{package_list}", options)
     end
 
     no_tasks do
