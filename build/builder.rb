@@ -87,7 +87,7 @@ module OpenShift
     def install_required_packages
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       packages = get_required_packages
-      `su -c \"yum install -y --skip-broken #{packages}\"`
+      puts `su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-*\\\" #{packages}\"`.chomp
     end    
 
     desc "print_packages", "Print a space separated list of packages"

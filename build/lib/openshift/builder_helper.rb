@@ -221,7 +221,7 @@ mkdir -p /tmp/rhc/junit
               unless ignore_packages.include?(package.name)
                 required_packages = package.build_requires + package.requires
                 required_packages.each do |r_package|
-                  required_packages_str += " \"#{r_package.yum_name_with_version}\"" unless packages.include?(r_package.name)
+                  required_packages_str += " \\\"#{r_package.yum_name_with_version}\\\"" unless packages.include?(r_package.name)
                 end
               end
             end
