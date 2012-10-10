@@ -440,7 +440,7 @@ EOF
           if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
             if options.install_required_packages?
               puts "Starting yum update..."
-              out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby-qpid-* qpid-*\\\"\"", 60 * 10, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
 
               print_highlighted_output("Update Output", out)
