@@ -47,12 +47,11 @@ module Origin
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
 
       FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
-      FileUtils.rm_rf "/root/origin-rpms"
       FileUtils.rm_rf "/tmp/tito"
       
       if options.clean_packages?
         run("yum clean all", options)
-        
+        packages = get_packages(false, true).values
         package_names = "\"#{packages.join("\" \"")}\""
         puts "Removing stale packages..."
         run("yum erase -y #{package_names}", options)
@@ -507,7 +506,7 @@ EOF
           end
           
           if options.install_from_source? || options.install_from_local_source?
-            puts "Running devbroker script..."
+            puts "Installing Origin packages..."
             out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && su -c \"build/origin local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
           end
