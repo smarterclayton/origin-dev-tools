@@ -157,6 +157,7 @@ module OpenShift
     desc "update", "Update current instance by installing RPMs from local git tree"
     method_option :include_stale, :type => :boolean, :desc => "Include packages that have been tagged but not synced to the repo"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :retry_failure_with_tag, :type => :boolean, :default=>true, :desc => "If a package fails to build, tag it and retry the build."
     def update
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       update_impl(options)

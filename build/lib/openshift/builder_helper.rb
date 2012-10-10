@@ -42,15 +42,19 @@ module OpenShift
       inside(File.expand_path("#{build_dir}", File.dirname(File.dirname(File.dirname(File.dirname(__FILE__)))))) do
         # Build and install the RPM's locally
         unless run("tito build --rpm --test", :verbose => options.verbose?)
-          # Tag to trick tito to build
-          commit_id = `git log --pretty=format:%%H --max-count=1 %s" % .`
-          spec_file_name = File.basename(spec_file)
-          version = get_version(spec_file_name)
-          next_version = next_tito_version(version, commit_id)
-          puts "current spec file version #{version} next version #{next_version}"
-          unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; tito build --rpm --test", :verbose => options.verbose?)
-            FileUtils.rm_rf '/tmp/devenv/sync/'
-            exit 1
+          if options.retry_failure_with_tag
+            # Tag to trick tito to build
+            commit_id = `git log --pretty=format:%%H --max-count=1 %s" % .`
+            spec_file_name = File.basename(spec_file)
+            version = get_version(spec_file_name)
+            next_version = next_tito_version(version, commit_id)
+            puts "current spec file version #{version} next version #{next_version}"
+            unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; tito build --rpm --test", :verbose => options.verbose?)
+              FileUtils.rm_rf '/tmp/devenv/sync/'
+              exit 1
+            end
+          else
+            puts "Package #{package_name} failed to build."
           end
         end
         Dir.glob('/tmp/tito/x86_64/*.rpm').each {|file|
