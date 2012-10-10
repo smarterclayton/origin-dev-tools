@@ -90,17 +90,6 @@ module OpenShift
       puts `su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-*\\\" #{packages}\"`.chomp
     end    
 
-    desc "print_packages", "Print a space separated list of packages"
-    def print_packages
-      puts get_sorted_package_names
-    end
-
-    desc "print_ignore_packages", "Print a space separated list of packages to ignore"
-    method_option :include_unmodified, :type => :boolean, :desc => "Include packages which have no modifications since their last tag"
-    def print_ignore_packages(include_unmodified=false)
-      puts get_ignore_packages(include_unmodified)
-    end
-
     desc "build NAME BUILD_NUM", "Build a new devenv AMI with the given NAME"
     method_option :register, :type => :boolean, :desc => "Register the instance"
     method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
