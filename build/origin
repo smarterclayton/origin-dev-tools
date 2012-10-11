@@ -129,7 +129,7 @@ EOF
         <<-EOF
 [openshift-origin]
 name    = openshift-origin
-baseurl = file://#{rpmdir}/noarch
+baseurl = file:///root/origin-rpms
 gpgcheck= 0
 enabled = 1
 retries = 0
