@@ -85,6 +85,13 @@ module Origin
 
         #mark all packages as sync'd
         get_sync_dirs
+
+        # Create the default express.conf file
+        if !File.exists?("/root/.openshift/express.conf")
+          run("mkdir -p /root/.openshift", options)
+          run("touch /root/.openshift/express.conf", options)
+          run("echo 'libra_server=localhost' > /root/.openshift/express.conf", options)
+        end
       end
     end
 
@@ -540,7 +547,7 @@ EOF
     
           unless options.skip_verify? || options.install_required_packages?
             puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 10, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 2, ssh_user)
             print_and_exit(ret, out) if ret != 0
             puts "Done"
 
