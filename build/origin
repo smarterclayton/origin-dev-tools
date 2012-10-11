@@ -43,6 +43,7 @@ module Origin
     desc "local_build", "Builds and installs all packages locally"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :clean_packages, :type => :boolean, :desc => "Erase existing packages before install?"
+    method_option :update_packages, :type => :boolean, :desc => "Run yum update before install?"
     method_option :incremental, :type => :boolean, :desc => "Build only the changed packages"
     def local_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
@@ -61,10 +62,12 @@ module Origin
           puts "Removing stale packages..."
           run("yum erase -y #{package_names}", options)
         end
-
-        puts "Updating all packages on the system..."
-        run("yum update -y --exclude='rhc*,ruby-*,qpid-*'; yum -y install openssh-clients yum-priorities", options)
-        puts "Done"
+        
+        if options.update_packages?
+          puts "Updating all packages on the system..."
+          run("yum update -y --exclude='rhc*, ruby, ruby-*, qpid-*'", options)
+          puts "Done"
+        end
 
         find_and_build_specs
         
@@ -180,11 +183,11 @@ EOF
 
       def rpm_manifest(hostname, sshuser="root")
         print "Retrieving RPM manifest.."
-        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|openshift)"', 60, false, 1, sshuser)
+        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|openshift)" | grep -v cartridge', 60, false, 1, sshuser)
         manifest = manifest.split("\n").sort.join(" / ")
         # Trim down the output to 255 characters
         manifest.gsub!(/rubygem-([a-z])/, '\1')
-        manifest.gsub!('openshift-', '')
+        manifest.gsub!('openshift-origin-', '')
         manifest.gsub!('mcollective-', 'mco-')
         manifest.gsub!('.fc16', '')
         manifest.gsub!('.noarch', '')
@@ -400,7 +403,6 @@ EOF
             build_and_install(package_name, build_dir, spec_file)
           end
         end
-        run("/sbin/service mcollective restart; /sbin/service openshift-broker restart", :verbose => options.verbose?)
       end
 
       def sync_impl(name, options)
@@ -455,14 +457,14 @@ EOF
           if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
             if options.install_required_packages?
               puts "Starting yum update..."
-              out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby ruby-libs ruby-rdoc ruby-irb ruby-devel ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
 
               print_highlighted_output("Update Output", out)
             end
 
             puts "Installing packages required for build..."
-            out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk\"", 60 * 10, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities\"", 60 * 10, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Install Output", out)
 
@@ -508,8 +510,8 @@ EOF
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Install Output", out)
 
-            puts "Downgrading qpid version..."
-            out = ssh(hostname, "su -c \"yum -y downgrade qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user)
+            puts "Downgrading packages..."
+            out = ssh(hostname, "su -c \"yum -y downgrade ruby ruby-libs ruby-rdoc ruby-irb ruby-devel qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Downgrade Output", out)
           end
@@ -536,9 +538,6 @@ EOF
             image_id = registered_ami.id
           end
     
-          out = ssh(hostname, "su -c \"yum list installed\"", 60 * 2, false, 1, ssh_user)
-          print_highlighted_output("Installed Packages", out)
-
           unless options.skip_verify? || options.install_required_packages?
             puts "Running broker setup..."
             out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 10, true, 1, ssh_user)
