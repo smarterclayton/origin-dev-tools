@@ -301,7 +301,7 @@ mkdir -p /tmp/rhc/junit
 
     def update_api_file(instance)
       public_ip = instance.dns_name
-      external_config = "~/.openshift/api.yml"
+      external_config = "~/.openshift/console.conf"
       config_file = File.expand_path(external_config)
 
       Dir.mkdir(File.expand_path('~/.openshift')) rescue nil
@@ -310,16 +310,18 @@ mkdir -p /tmp/rhc/junit
         puts "File '#{external_config}' does not exist, creating..."
         system("touch #{external_config}")
         File.open(config_file, 'w') do |f| f.write(<<-END
-url: https://#{public_ip}/broker/rest
-suffix: dev.rhcloud.com
+BROKER_URL=https://#{public_ip}/broker/rest
+DOMAIN_SUFFIX=dev.rhcloud.com
+# Uncomment the next line to set a proxy URL for the broker
+# BROKER_PROXY_URL=
           END
           )
         end
 
       else
-        puts "Updating ~/.openshift/api.yml with public ip = #{public_ip}"
+        puts "Updating ~/.openshift/console.conf with public ip = #{public_ip}"
         s = IO.read(config_file)
-        s.gsub!(%r[^url:\s*https://[^/]+/broker/rest$]m, "url: https://#{public_ip}/broker/rest")
+        s.gsub!(%r[^BROKER_URL=\s*https://[^/]+/broker/rest$]m, "BROKER_URL=https://#{public_ip}/broker/rest")
         File.open(config_file, 'w'){ |f| f.write(s) }
       end
     end
