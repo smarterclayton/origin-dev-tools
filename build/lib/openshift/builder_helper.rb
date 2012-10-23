@@ -72,13 +72,9 @@ module OpenShift
 
     def update_remote_tests(hostname, branch=nil, repo_parent_dir="/root", user="root")
       puts "Updating remote tests..."
-      #all_repo_dirs = ['/root/li']
-      all_repo_dirs = []
-      SIBLING_REPOS.each do |repo_name, repo_dirs|
-        all_repo_dirs << "#{repo_parent_dir}/#{repo_name}"
-      end
       git_archive_commands = ''
-      all_repo_dirs.each do |repo_dir|
+      SIBLING_REPOS.each do |repo_name, repo_dirs|
+        repo_dir = "#{repo_parent_dir}/#{repo_name}"
         git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
@@ -89,46 +85,21 @@ rm -rf #{repo_parent_dir}/li-test
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
 
-      #update_test_bundle(hostname, user, 'console', 'site')
-
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
     end
     
-    def scp_remote_tests(hostname, use_stage=false, repo_parent_dir="/root", user="root")
-      if use_stage
-        init_repo(hostname, true, nil, repo_parent_dir, user)
-        update_remote_tests(hostname, "stage", repo_parent_dir, user)
-      else
-        puts "Archiving local changes..."
-        tmpdir = `mktemp -d`.strip
-        tarname = File.basename tmpdir
-        all_repo_dirs = []
-        SIBLING_REPOS.each do |repo_name, repo_dirs|
-          repo_dirs.each do |repo_dir|
-            if File.exists?(repo_dir)
-              all_repo_dirs << repo_dir
-              break
-            end
-          end
+    def scp_remote_tests(hostname, branch, repo_parent_dir="/root", user="root")
+      init_repos(hostname, true, nil, repo_parent_dir, user)
+      sync_repos(hostname)
+      update_remote_tests(hostname, branch, repo_parent_dir, user)
+    end
+    
+    def sync_repos(hostname)
+      SIBLING_REPOS.each do |repo_name, repo_dirs|
+        repo_dirs.each do |repo_dir|
+          break if sync_sibling_repo(repo_name, repo_dir, hostname)
         end
-        all_repo_dirs.each do |repo_dir|
-          inside(repo_dir) do
-            `git archive --prefix li-test/ --format=tar HEAD | (cd #{tmpdir} && tar --warning=no-timestamp -xf -)`
-          end
-        end
-        `cd /tmp/ && tar -cvf /tmp/#{tarname}.tar #{tarname}` 
-        puts "Done"
-        puts "Copying tests to remote instance: #{hostname}"
-        scp_to(hostname, "/tmp/#{tarname}.tar", "~/", 600, 10, user)
-        puts "Done"
-        puts "Extracting tests on remote instance: #{hostname}"
-        ssh(hostname, "set -e; rm -rf li-test; tar -xf #{tarname}.tar; mv ./#{tarname}/li-test ./li-test; mkdir -p /tmp/rhc/junit", 120, false, 1, user)
-        #update_test_bundle(hostname, user, 'console', 'site')
-        update_cucumber_tests(hostname, repo_parent_dir, user)
-        puts "Done"
-        FileUtils.rm_rf tmpdir
-        FileUtils.rm "/tmp/#{tarname}.tar"
       end
     end
 
@@ -142,7 +113,7 @@ mkdir -p /tmp/rhc/junit
 
         puts "Synchronizing local changes from branch #{branch} for repo #{repo_name} from #{File.basename(FileUtils.pwd)}..."
 
-        init_repo(hostname, false, repo_name, remote_repo_parent_dir, ssh_user)
+        init_repos(hostname, false, repo_name, remote_repo_parent_dir, ssh_user)
 
         exitcode = run(<<-"SHELL", :verbose => verbose)
           #######
@@ -195,7 +166,7 @@ mkdir -p /tmp/rhc/junit
       return clone_commands, working_dirs
     end
 
-    def init_repo(hostname, replace=true, repo=nil, remote_repo_parent_dir="/root", ssh_user="root")
+    def init_repos(hostname, replace=true, repo=nil, remote_repo_parent_dir="/root", ssh_user="root")
       git_clone_commands = "set -e\n "
 
       SIBLING_REPOS.each do |repo_name, repo_dirs|
@@ -524,6 +495,22 @@ mkdir -p /tmp/rhc/junit
           end
         end
       end
+    end
+    
+    def devenv_wildcard
+      "#{DEVENV_NAME}_*"
+    end
+    
+    def devenv_stage_wildcard
+      "#{DEVENV_NAME}-stage_*"
+    end
+    
+    def devenv_base_wildcard
+      "#{DEVENV_NAME}-base_*"
+    end
+    
+    def devenv_stage_base_wildcard
+      "#{DEVENV_NAME}-stage-base_*"
     end
 
   end

@@ -68,7 +68,7 @@ module OpenShift
       packages
     end
 
-    def get_amis(conn, filter = DEVENV_WILDCARD)
+    def get_amis(conn, filter)
       conn.images.with_owner(:self).
         filter("state", "available").
         filter("name", filter)
@@ -105,7 +105,7 @@ module OpenShift
       end
     end
 
-    def get_latest_ami(conn, filter_val = DEVENV_WILDCARD)
+    def get_latest_ami(conn, filter_val)
       AWS.memoize do
         # Limit to DevEnv images
         devenv_amis = conn.images.with_owner(:self).

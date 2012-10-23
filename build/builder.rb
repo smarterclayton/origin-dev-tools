@@ -88,13 +88,13 @@ module OpenShift
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       packages = get_required_packages
       puts `su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-*\\\" #{packages}\"`.chomp
-    end    
+    end
 
     desc "build NAME BUILD_NUM", "Build a new devenv AMI with the given NAME"
     method_option :register, :type => :boolean, :desc => "Register the instance"
     method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
-    method_option :use_stage_repo, :type => :boolean, :desc => "Build instance off the stage repository"
-    method_option :use_test_repo, :type => :boolean, :desc => "Build instance off the test yum repository"
+    method_option :branch, :default => "master", :desc => "Build instance off the specified branch"
+    method_option :yum_repo, :default => "candidate", :desc => "Build instance off the specified yum repository"
     method_option :reboot, :type => :boolean, :desc => "Reboot the instance after updating"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :official, :type => :boolean, :desc => "For official use.  Send emails, etc."
@@ -106,7 +106,6 @@ module OpenShift
     method_option :include_coverage, :type => :boolean, :desc => "Include coverage analysis on unit tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
-    method_option :build_clean_ami, :type => :boolean, :desc => "Indicates whether to start from a base RHEL image"
     method_option :install_from_source, :type => :boolean, :desc => "Indicates whether to build based off origin/master"
     method_option :install_from_local_source, :type => :boolean, :desc => "Indicates whether to build based on your local source"
     method_option :install_required_packages, :type => :boolean, :desc => "Create an instance with all the packages required by OpenShift"
@@ -133,20 +132,12 @@ module OpenShift
         else
           image = conn.images[AMI[options.region]]
         end
-      elsif options.build_clean_ami? || options.install_from_source? || options.install_from_local_source?
-        # Get the latest devenv base image and create a new instance
-        if options.use_stage_repo?
-          filter = DEVENV_STAGE_BASE_WILDCARD
-        else
-          filter = DEVENV_BASE_WILDCARD
-        end
-        image = get_latest_ami(conn, filter)
       else
-        # Get the latest devenv clean image and create a new instance
-        if options.use_stage_repo?
-          filter = DEVENV_STAGE_CLEAN_WILDCARD
+        # Get the latest devenv base image and create a new instance
+        if options.yum_repo == 'stage'
+          filter = devenv_stage_base_wildcard
         else
-          filter = DEVENV_CLEAN_WILDCARD
+          filter = devenv_base_wildcard
         end
         image = get_latest_ami(conn, filter)
       end
@@ -187,7 +178,6 @@ module OpenShift
     desc "launch NAME", "Launches the latest DevEnv instance, tagging with NAME"
     method_option :verifier, :type => :boolean, :desc => "Add verifier functionality (private IP setup and local tests)"
     method_option :use_stage_image, :type => :boolean, :desc => "Launch a stage DevEnv image"
-    method_option :use_clean_image, :type => :boolean, :desc => "Launch a clean DevEnv image"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :express_server, :type => :boolean, :desc => "Set as express server in express.conf and leave on public_ip"
     method_option :ssh_config_verifier, :type => :boolean, :desc => "Set as verifier in .ssh/config"
@@ -220,7 +210,7 @@ module OpenShift
 
       update_facts_impl(hostname)
       post_launch_setup(hostname)
-      setup_verifier(hostname, options.use_stage_image) if options.verifier?
+      setup_verifier(hostname, options.use_stage_image?) if options.verifier?
 
       validate_instance(hostname, 4)
 
@@ -323,11 +313,9 @@ module OpenShift
 
       def choose_filter_for_launch_ami(options)
         if options.use_stage_image?
-          filter = DEVENV_STAGE_WILDCARD
-        elsif options.use_clean_image?
-          filter = DEVENV_CLEAN_WILDCARD
+          filter = devenv_stage_wildcard
         else
-          filter = DEVENV_WILDCARD
+          filter = devenv_wildcard
         end
         filter
       end

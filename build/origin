@@ -183,7 +183,7 @@ EOF
 
       def setup_verifier(hostname, use_stage_image=false)
         print "Initializing git repo for syncing..."
-        init_repo(hostname, true, nil, "~", ssh_user)
+        init_repos(hostname, true, nil, "~", ssh_user)
         puts "Done"
         update_remote_tests(hostname, use_stage_image ? "stage" : nil, "~", ssh_user)
       end
@@ -461,67 +461,65 @@ EOF
     
         ret, out = 0, nil
         begin
-          if options.build_clean_ami? || options.install_from_source? || options.install_from_local_source? || options.install_required_packages?
-            if options.install_required_packages?
-              puts "Starting yum update..."
-              out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby ruby-libs ruby-rdoc ruby-irb ruby-devel ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-
-              print_highlighted_output("Update Output", out)
-            end
-
-            puts "Installing packages required for build..."
-            out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities\"", 60 * 10, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Install Output", out)
-
-            puts "Creating mount..."
-            out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
+          if options.install_required_packages?
+            puts "Starting yum update..."
+            out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby ruby-libs ruby-rdoc ruby-irb ruby-devel ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
 
-            init_repo(hostname, true, nil, "/data", ssh_user)
-            clone_commands, working_dirs = '', ''
-
-            if options.install_from_local_source?
-              puts "Performing clean install from local source..."
-              clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
-            else 
-              SIBLING_REPOS.each do |repo_name, repo_dirs|
-                working_dirs += "#{repo_name}-working "
-                clone_commands += "git clone #{repo_name} #{repo_name}-working; "
-                clone_commands += "pushd #{repo_name}-working; git checkout stage; popd; " if options.use_stage_repo?
-              end
-            end
-            out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            puts "Done"
-      
-            if options[:extra_rpm_dir]
-              if File.exist? options[:extra_rpm_dir]
-                out, ret = ssh(hostname, "mkdir -p /data/origin-server-working/build/extras", 60, true, 1, ssh_user)
-                files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
-                files.each do |file|
-                  scp_to(hostname, file, "/data/origin-server-working/build/extras/", 60*10, 5, ssh_user)
-                end
-          
-                out, ret = ssh(hostname, "su -c \"cd /data/origin-server-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
-              else
-                puts "!!!Warning!!!"
-                puts "Directory containing extra rpms not found. Skipping..."
-                puts "!!!Warning!!!"
-              end
-            end
-        
-            puts "Installing pre-requisite packages"
-            out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && build/origin install_required_packages", 60 * 30, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Install Output", out)
-
-            puts "Downgrading packages..."
-            out = ssh(hostname, "su -c \"yum -y downgrade ruby ruby-libs ruby-rdoc ruby-irb ruby-devel qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            print_highlighted_output("Downgrade Output", out)
+            print_highlighted_output("Update Output", out)
           end
+
+          puts "Installing packages required for build..."
+          out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities\"", 60 * 10, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+
+          puts "Creating mount..."
+          out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+
+          init_repos(hostname, true, nil, "/data", ssh_user)
+          clone_commands, working_dirs = '', ''
+
+          if options.install_from_local_source?
+            puts "Performing clean install from local source..."
+            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
+          else
+            SIBLING_REPOS.each do |repo_name, repo_dirs|
+              working_dirs += "#{repo_name}-working "
+              clone_commands += "git clone #{repo_name} #{repo_name}-working; "
+              clone_commands += "pushd #{repo_name}-working; git checkout #{options.branch}; popd; "
+            end
+          end
+          out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          puts "Done"
+
+          if options[:extra_rpm_dir]
+            if File.exist? options[:extra_rpm_dir]
+              out, ret = ssh(hostname, "mkdir -p /data/origin-server-working/build/extras", 60, true, 1, ssh_user)
+              files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
+              files.each do |file|
+                scp_to(hostname, file, "/data/origin-server-working/build/extras/", 60*10, 5, ssh_user)
+              end
+
+              out, ret = ssh(hostname, "su -c \"cd /data/origin-server-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
+            else
+              puts "!!!Warning!!!"
+              puts "Directory containing extra rpms not found. Skipping..."
+              puts "!!!Warning!!!"
+            end
+          end
+        
+          puts "Installing pre-requisite packages"
+          out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && build/origin install_required_packages", 60 * 30, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Install Output", out)
+
+          puts "Downgrading packages..."
+          out = ssh(hostname, "su -c \"yum -y downgrade ruby ruby-libs ruby-rdoc ruby-irb ruby-devel qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+          print_highlighted_output("Downgrade Output", out)
           
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
@@ -538,20 +536,18 @@ EOF
     
           image_id = nil
           if options[:register]
-            manifest = rpm_manifest(hostname, ssh_user)
-            register_image(conn, instance, name + '-clean_' + build_num, manifest) if options.build_clean_ami?
-              
+            manifest = rpm_manifest(hostname, ssh_user)              
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
           end
-    
+
           unless options.skip_verify? || options.install_required_packages?
             puts "Running broker setup..."
             out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 2, ssh_user)
             print_and_exit(ret, out) if ret != 0
             puts "Done"
 
-            scp_remote_tests(hostname, options.use_stage_repo, "~", ssh_user)
+            scp_remote_tests(hostname, options.branch, "~", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
           puts "Done."
