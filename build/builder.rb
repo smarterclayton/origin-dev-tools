@@ -273,6 +273,36 @@ module OpenShift
 
       sanity_check_impl(tag, hostname, instance, conn, options)
     end
+    
+    
+    def sanity_check(tag)
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+    
+      conn = connect(options.region)
+      instance = find_instance(conn, tag, true, true, ssh_user)
+      hostname = instance.dns_name
+    
+      sanity_check_impl(tag, hostname, instance, conn, options)
+    end
+    
+    desc "clone_addtl_repos BRANCH", "Clones any additional repos not including this repo and any other repos that extend these dev tools"
+    method_option :replace, :type => :boolean, :desc => "Replace the addtl repos if the already exist"
+    def clone_addtl_repos(branch)
+      git_clone_commands = "set -e\n "
+
+      ADDTL_SIBLING_REPOS.each do |repo_name|
+        repo_git_url = SIBLING_REPOS_GIT_URL[repo_name]
+        git_clone_commands += "if [ ! -d #{repo_name} ]; then\n" unless options.replace?
+        git_clone_commands += "rm -rf #{repo_name}; git clone #{repo_git_url};\n"
+        git_clone_commands += "fi\n" unless options.replace?
+        git_clone_commands += "pushd #{repo_name}\n"
+        git_clone_commands += "git checkout #{branch}\n"
+        git_clone_commands += "popd\n"
+      end
+      unless run(git_clone_commands, :verbose => true)
+        exit 1
+      end
+    end
 
     desc "install_local_client", "Builds and installs the local client rpm (uses sudo)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"

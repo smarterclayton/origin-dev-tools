@@ -179,23 +179,6 @@ mkdir -p /tmp/rhc/junit
       end
       ssh(hostname, git_clone_commands, 240, false, 10, ssh_user)
     end
-    
-    def clone_addtl_repos(branch, replace=true)
-      git_clone_commands = "set -e\n "
-
-      ADDTL_SIBLING_REPOS.each do |repo_name|
-        repo_git_url = SIBLING_REPOS_GIT_URL[repo_name]
-        git_clone_commands += "if [ ! -d #{repo_name} ]; then\n" unless replace
-        git_clone_commands += "rm -rf #{repo_name}; git clone #{repo_git_url};\n"
-        git_clone_commands += "fi\n" unless replace
-        git_clone_commands += "pushd #{repo_name}\n"
-        git_clone_commands += "git checkout #{branch}\n"
-        git_clone_commands += "popd\n"
-      end
-      unless run(git_clone_commands, :verbose => true)
-        exit 1
-      end
-    end
 
     def get_required_packages
       required_packages_str = ""
