@@ -398,7 +398,7 @@ EOF
           package_name = sync_dir[0]
           build_dir = sync_dir[1]
           spec_file = sync_dir[2]
-          build_and_install(package_name, build_dir, spec_file)
+          build_and_install(package_name, build_dir, spec_file, options)
         end
         
         if options.include_stale?
@@ -407,7 +407,7 @@ EOF
             package_name = stale_dir[0]
             build_dir = stale_dir[1]
             spec_file = stale_dir[2]
-            build_and_install(package_name, build_dir, spec_file)
+            build_and_install(package_name, build_dir, spec_file, options)
           end
         end
       end

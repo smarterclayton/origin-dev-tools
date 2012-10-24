@@ -39,6 +39,8 @@ SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git'}
 
+ADDTL_SIBLING_REPOS = ['origin-server', 'rhc']
+
 CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
 redhat_release = File.open("/etc/redhat-release").read
