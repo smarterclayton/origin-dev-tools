@@ -25,7 +25,7 @@ module OpenShift
       end
     end
     
-    desc "find_and_build_specs", "Builds all non ignored specs in the current directory"
+    desc "find_and_build_specs", "Builds all non ignored specs in the current directory", :hide => true
     def find_and_build_specs
       packages = get_packages(false, true).values
       buildable = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }.select do |p|
