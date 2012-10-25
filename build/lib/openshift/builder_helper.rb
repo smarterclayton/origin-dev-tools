@@ -74,8 +74,8 @@ module OpenShift
       puts "Updating remote tests..."
       git_archive_commands = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
-        repo_dir = "#{repo_parent_dir}/#{repo_name}"
-        git_archive_commands += "pushd #{repo_dir}-bare > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
+        repo_dir = "#{repo_parent_dir}/#{repo_name}-bare"
+        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
       ssh(hostname, %{
