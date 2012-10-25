@@ -165,6 +165,14 @@ mkdir -p /tmp/rhc/junit
       end
       return clone_commands, working_dirs
     end
+    
+    def repo_clone_commands(hostname)
+      clone_commands = ''
+      SIBLING_REPOS.each_key do |repo_name|
+        clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
+      end
+      clone_commands
+    end
 
     def init_repos(hostname, replace=true, repo=nil, remote_repo_parent_dir="/root", ssh_user="root")
       git_clone_commands = "set -e\n "
