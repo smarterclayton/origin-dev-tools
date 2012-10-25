@@ -178,7 +178,7 @@ EOF
       end
       
       def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
-        ssh(hostname, "rm -f #{repo_parent_dir}/li-test/tests; ln -s #{repo_parent_dir}/li-test/controller/test/cucumber #{repo_parent_dir}/li-test/tests ;", 60, false, 2, user)
+        ssh(hostname, "rm -f #{repo_parent_dir}/openshift-test/tests; ln -s #{repo_parent_dir}/openshift-test/controller/test/cucumber #{repo_parent_dir}/openshift-test/tests ;", 60, false, 2, user)
       end
 
       def setup_verifier(hostname, use_stage_image=false)
@@ -233,22 +233,22 @@ EOF
             extended_tests.each do |extended_test|
               case extended_test
               when 'broker'
-                test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 li-test/tests\"", {:retry_individually => true}]
-                test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 li-test/tests\"", {:retry_individually => true}]
-                test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 li-test/tests\"", {:retry_individually => true}]
-                test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 li-test/tests\"", {:retry_individually => true}]
+                test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 openshift-test/tests\"", {:retry_individually => true}]
                 
                 # The broker_key initializer in controller needs to be fixed before the test below can pass
-                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd li-test/broker; bundle exec rake test:oo_unit_ext1", {:retry_individually => true}]
+                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd openshift-test/broker; bundle exec rake test:oo_unit_ext1", {:retry_individually => true}]
               when 'runtime'
-                test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 li-test/tests\""]
-                test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 li-test/tests\""]
-                test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 li-test/tests\""]
+                test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 openshift-test/tests\""]
+                test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 openshift-test/tests\""]
+                test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 openshift-test/tests\""]
               when 'site'
                 puts "Warning: Site tests are currently not supported"
               when 'rhc'
-                test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended li-test/tests\"", {:retry_individually => true}]
-                base_str = "QUIET=1 RHC_SERVER=localhost cucumber #{CUCUMBER_OPTIONS} li-test/features"
+                test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended openshift-test/tests\"", {:retry_individually => true}]
+                base_str = "QUIET=1 RHC_SERVER=localhost cucumber #{CUCUMBER_OPTIONS} openshift-test/features"
                 tags = [
                   [ :client, :domain, :sshkey ],
                   [ :application ],
@@ -273,30 +273,30 @@ EOF
               end
             end
           elsif options.include_rcov?
-            test_queues[0] << ["OpenShift Origin Node Unit Coverage", "cd li-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
-            test_queues[1] << ["OpenShift Origin Broker Unit and Functional Coverage", "cd li-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
+            test_queues[0] << ["OpenShift Origin Node Unit Coverage", "cd openshift-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
+            test_queues[1] << ["OpenShift Origin Broker Unit and Functional Coverage", "cd openshift-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
           elsif options.include_cucumber
             timeout = @@SSH_TIMEOUT
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
-            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} li-test/tests", {:timeout => timeout}]
+            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} openshift-test/tests", {:timeout => timeout}]
           elsif options.include_web?
             puts "Warning: Tests for the website are currently not supported"
           else
   
             unless options.exclude_broker?
-              test_queues[0] << ["OpenShift Origin Broker Functional", "cd li-test/broker; bundle exec rake test:functionals"]
-              test_queues[1] << ["OpenShift Origin Broker Integration", "cd li-test/broker; bundle exec rake test:integration"]
-              test_queues[2] << ["OpenShift Origin Broker Unit 1", "cd li-test/broker; bundle exec rake test:oo_unit1"]
-              test_queues[3] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin li-test/tests\""]
+              test_queues[0] << ["OpenShift Origin Broker Functional", "cd openshift-test/broker; bundle exec rake test:functionals"]
+              test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; bundle exec rake test:integration"]
+              test_queues[2] << ["OpenShift Origin Broker Unit 1", "cd openshift-test/broker; bundle exec rake test:oo_unit1"]
+              test_queues[3] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin openshift-test/tests\""]
 
               # The broker_key initializer in controller needs to be fixed before the test below can pass
-              #test_queues[3] << ["OpenShift Origin Broker Unit 2", "cd li-test/broker; bundle exec rake test:oo_unit2"]
+              #test_queues[3] << ["OpenShift Origin Broker Unit 2", "cd openshift-test/broker; bundle exec rake test:oo_unit2"]
             end
 
             unless options.exclude_runtime?
-              #test_queues[3] << ["Runtime Unit", "cd li-test/node; su -c \"rake unit_test\""]
+              #test_queues[3] << ["Runtime Unit", "cd openshift-test/node; su -c \"rake unit_test\""]
               (1..4).each do |i|
-                test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} li-test/tests\""]
+                test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} openshift-test/tests\""]
               end
             end
   
@@ -348,7 +348,7 @@ EOF
                 case extended_test
                 when 'broker'
                 when 'runtime'
-                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton li-test/tests\""]
+                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton openshift-test/tests\""]
                   output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1], timeout=@@SSH_TIMEOUT, ssh_user)
                   retry_test_failures(hostname, [singleton_queue], 2, timeout=@@SSH_TIMEOUT, ssh_user) if 0 != exit_code
                 when 'site'
@@ -563,9 +563,9 @@ EOF
                   "OpenShift Origin Node Unit"]
     
         cmds = ["su -c \"cd /var/www/openshift/broker; bundle exec rake test:sanity\"",
-                "cd li-test/node; su -c \"rake unit_test\""]
+                "cd openshift-test/node; su -c \"rake unit_test\""]
         add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, ssh_user)
-        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity li-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
+        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity openshift-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
     
         threads.each do |t|
           t[0].join

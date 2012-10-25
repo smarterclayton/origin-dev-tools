@@ -75,12 +75,12 @@ module OpenShift
       git_archive_commands = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dir = "#{repo_parent_dir}/#{repo_name}-bare"
-        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
+        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix openshift-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
       ssh(hostname, %{
 set -e;
-rm -rf #{repo_parent_dir}/li-test
+rm -rf #{repo_parent_dir}/openshift-test
 #{git_archive_commands}
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
@@ -143,7 +143,7 @@ mkdir -p /tmp/rhc/junit
     def update_test_bundle(hostname, user, *dirs)
       cmd = ""
       dirs.each do |dir|
-        cmd += "cd ~/li-test/#{dir}; rm Gemfile.lock; scl enable ruby193 \"bundle install --local\"; touch Gemfile.lock;\n"
+        cmd += "cd ~/openshift-test/#{dir}; rm Gemfile.lock; scl enable ruby193 \"bundle install --local\"; touch Gemfile.lock;\n"
       end
       ssh(hostname, cmd, 60, false, 1, user)
     end
@@ -395,15 +395,15 @@ END
           timeout = timeouts[index]
           output, exit_code = run_ssh(hostname, title, cmd, timeout, ssh_user)
           if exit_code != 0
-            if output.include?("Failing Scenarios:") && output =~ /cucumber li-test\/tests\/.*\.feature:\d+/
+            if output.include?("Failing Scenarios:") && output =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
               output.lines.each do |line|
-                if line =~ /cucumber li-test\/tests\/(.*\.feature):(\d+)/
+                if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
                   test = $1
                   scenario = $2
                   if retry_individ
-                    failures.push(["#{title} (#{test}:#{scenario})", "su -c \"cucumber #{CUCUMBER_OPTIONS} li-test/tests/#{test}:#{scenario}\""])
+                    failures.push(["#{title} (#{test}:#{scenario})", "su -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}:#{scenario}\""])
                   else
-                    failures.push(["#{title} (#{test})", "su -c \"cucumber #{CUCUMBER_OPTIONS} li-test/tests/#{test}\""])
+                    failures.push(["#{title} (#{test})", "su -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}\""])
                   end
                 end
               end
