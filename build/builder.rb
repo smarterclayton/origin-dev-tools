@@ -87,7 +87,9 @@ module OpenShift
     def install_required_packages
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       packages = get_required_packages
-      puts `su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-*\\\" #{packages}\"`.chomp
+      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-* java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
+        exit 1
+      end
     end
 
     desc "build NAME BUILD_NUM", "Build a new devenv AMI with the given NAME"
