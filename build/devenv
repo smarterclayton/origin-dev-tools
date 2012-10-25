@@ -429,7 +429,7 @@ EOF
             out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user)
           end
           
-          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/devenv update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
 
           if options.clean_metadata? and ret == 0
             out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user)
@@ -512,7 +512,7 @@ EOF
           end
         
           puts "Installing pre-requisite packages"
-          out, ret = ssh(hostname, "cd /data/origin-dev-tools && build/origin install_required_packages", 60 * 30, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/origin-dev-tools && build/devenv install_required_packages", 60 * 30, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
@@ -523,7 +523,7 @@ EOF
           
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
-            out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/origin local_build\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
           end
           
