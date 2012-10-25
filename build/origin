@@ -429,7 +429,7 @@ EOF
             out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user)
           end
           
-          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools-working; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/origin update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
 
           if options.clean_metadata? and ret == 0
             out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user)
@@ -486,9 +486,9 @@ EOF
             clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
           else
             SIBLING_REPOS.each do |repo_name, repo_dirs|
-              working_dirs += "#{repo_name}-working "
-              clone_commands += "git clone #{repo_name} #{repo_name}-working; "
-              clone_commands += "pushd #{repo_name}-working; git checkout #{options.branch}; popd; "
+              working_dirs += "#{repo_name} "
+              clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
+              clone_commands += "pushd #{repo_name}; git checkout #{options.branch}; popd; "
             end
           end
           out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
@@ -497,13 +497,13 @@ EOF
 
           if options[:extra_rpm_dir]
             if File.exist? options[:extra_rpm_dir]
-              out, ret = ssh(hostname, "mkdir -p /data/origin-server-working/build/extras", 60, true, 1, ssh_user)
+              out, ret = ssh(hostname, "mkdir -p /data/origin-server/build/extras", 60, true, 1, ssh_user)
               files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
               files.each do |file|
-                scp_to(hostname, file, "/data/origin-server-working/build/extras/", 60*10, 5, ssh_user)
+                scp_to(hostname, file, "/data/origin-server/build/extras/", 60*10, 5, ssh_user)
               end
 
-              out, ret = ssh(hostname, "su -c \"cd /data/origin-server-working/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su -c \"cd /data/origin-server/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
             else
               puts "!!!Warning!!!"
               puts "Directory containing extra rpms not found. Skipping..."
@@ -512,7 +512,7 @@ EOF
           end
         
           puts "Installing pre-requisite packages"
-          out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && build/origin install_required_packages", 60 * 30, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/origin-dev-tools && build/origin install_required_packages", 60 * 30, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
@@ -523,7 +523,7 @@ EOF
           
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
-            out, ret = ssh(hostname, "cd /data/origin-dev-tools-working && su -c \"build/origin local_build\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/origin local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
           end
           

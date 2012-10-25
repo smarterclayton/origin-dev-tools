@@ -75,7 +75,7 @@ module OpenShift
       git_archive_commands = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dir = "#{repo_parent_dir}/#{repo_name}"
-        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
+        git_archive_commands += "pushd #{repo_dir}-bare > /dev/null; git archive --prefix li-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
       ssh(hostname, %{
@@ -119,8 +119,8 @@ mkdir -p /tmp/rhc/junit
           #######
           # Start shell code
           export GIT_SSH=#{GIT_SSH_PATH}
-          #{branch == 'origin/master' ? "git push -q #{ssh_user}@#{hostname}:#{remote_repo_parent_dir}/#{repo_name} master:master --tags --force; " : ''}
-          git push -q #{ssh_user}@#{hostname}:#{remote_repo_parent_dir}/#{repo_name} #{branch}:master --tags --force
+          #{branch == 'origin/master' ? "git push -q #{ssh_user}@#{hostname}:#{remote_repo_parent_dir}/#{repo_name}-bare master:master --tags --force; " : ''}
+          git push -q #{ssh_user}@#{hostname}:#{remote_repo_parent_dir}/#{repo_name}-bare #{branch}:master --tags --force
 
           #######
           # End shell code
@@ -149,7 +149,7 @@ mkdir -p /tmp/rhc/junit
     end
 
     # clones origin-server/rhc over to remote;
-    # returns command to run remotely for cloning to standard -working dirs,
+    # returns command to run remotely for cloning to standard working dirs,
     # plus the names of those working dirs
     def sync_available_sibling_repos(hostname, remote_repo_parent_dir="/root", ssh_user="root")
       working_dirs = ''
@@ -157,8 +157,8 @@ mkdir -p /tmp/rhc/junit
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dirs.each do |repo_dir|
           if sync_sibling_repo(repo_name, repo_dir, hostname, remote_repo_parent_dir, ssh_user)
-            working_dirs += "#{repo_name}-working "
-            clone_commands += "git clone #{repo_name} #{repo_name}-working; "
+            working_dirs += "#{repo_name} "
+            clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
             break # just need the first repo found
           end
         end
@@ -172,8 +172,8 @@ mkdir -p /tmp/rhc/junit
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         if repo.nil? or repo == repo_name
           repo_git_url = SIBLING_REPOS_GIT_URL[repo_name]
-          git_clone_commands += "if [ ! -d #{remote_repo_parent_dir}/#{repo_name} ]; then\n" unless replace
-          git_clone_commands += "rm -rf #{remote_repo_parent_dir}/#{repo_name}; git clone --bare #{repo_git_url} #{remote_repo_parent_dir}/#{repo_name};\n"
+          git_clone_commands += "if [ ! -d #{remote_repo_parent_dir}/#{repo_name}-bare ]; then\n" unless replace
+          git_clone_commands += "rm -rf #{remote_repo_parent_dir}/#{repo_name}; git clone --bare #{repo_git_url} #{remote_repo_parent_dir}/#{repo_name}-bare;\n"
           git_clone_commands += "fi\n" unless replace
         end
       end

@@ -30,10 +30,8 @@ SAUCE_BROWSER = ""
 SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
 
-JENKINS_HOME_DIR = '/var/lib/openshift/826e5217a6a447b6bcc9ff6a477d324a/app-root/data'
-
-SIBLING_REPOS = {'origin-server' => ['../origin-server-working', '../origin-server-fork', '../origin-server', JENKINS_HOME_DIR + '/jobs/origin-server/workspace'],
-                 'rhc' => ['../rhc-working', '../rhc-fork', '../rhc', JENKINS_HOME_DIR + '/jobs/rhc/workspace'],
+SIBLING_REPOS = {'origin-server' => ['../origin-server'],
+                 'rhc' => ['../rhc'],
                  'origin-dev-tools' => ['../origin-dev-tools']}
 SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin-server.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
