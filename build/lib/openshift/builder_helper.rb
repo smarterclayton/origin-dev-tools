@@ -175,7 +175,7 @@ mkdir -p /tmp/rhc/junit
     end
 
     def init_repos(hostname, replace=true, repo=nil, remote_repo_parent_dir="/root", ssh_user="root")
-      git_clone_commands = "set -e\n "
+      git_clone_commands = ''
 
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         if repo.nil? or repo == repo_name
