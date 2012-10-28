@@ -37,7 +37,9 @@ SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git'}
 
-ADDTL_SIBLING_REPOS = ['origin-server', 'rhc']
+DEV_TOOLS_REPO = 'origin-dev-tools'
+DEV_TOOLS_EXT_REPO = DEV_TOOLS_REPO
+ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO]
 
 CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
