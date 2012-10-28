@@ -507,20 +507,24 @@ mkdir -p /tmp/rhc/junit
       end
     end
     
-    def devenv_wildcard
-      "#{DEVENV_NAME}_*"
+    def devenv_branch_wildcard(branch)
+      wildcard = nil
+      if branch == 'master'
+        wildcard = "#{DEVENV_NAME}_*"
+      else
+        wildcard = "#{DEVENV_NAME}-#{branch}_*"
+      end
+      wildcard
     end
     
-    def devenv_stage_wildcard
-      "#{DEVENV_NAME}-stage_*"
-    end
-    
-    def devenv_base_wildcard
-      "#{DEVENV_NAME}-base_*"
-    end
-    
-    def devenv_stage_base_wildcard
-      "#{DEVENV_NAME}-stage-base_*"
+    def devenv_base_branch_wildcard(branch)
+      wildcard = nil
+      if branch == 'master'
+        wildcard = "#{DEVENV_NAME}-base_*"
+      else
+        wildcard = "#{DEVENV_NAME}-#{branch}-base_*"
+      end
+      wildcard
     end
 
   end
