@@ -195,11 +195,11 @@ EOF
         ssh(hostname, "rm -f #{repo_parent_dir}/openshift-test/tests; ln -s #{repo_parent_dir}/openshift-test/controller/test/cucumber #{repo_parent_dir}/openshift-test/tests ;", 60, false, 2, user)
       end
 
-      def setup_verifier(hostname, use_stage_image=false)
+      def setup_verifier(hostname, branch)
         print "Initializing git repo for syncing..."
         init_repos(hostname, true, nil, "~", ssh_user)
         puts "Done"
-        update_remote_tests(hostname, use_stage_image ? "stage" : nil, "~", ssh_user)
+        update_remote_tests(hostname, branch, "~", ssh_user)
       end
 
       def rpm_manifest(hostname, sshuser="root")

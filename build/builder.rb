@@ -136,11 +136,7 @@ module OpenShift
         end
       else
         # Get the latest devenv base image and create a new instance
-        if options.yum_repo == 'stage'
-          filter = devenv_stage_base_wildcard
-        else
-          filter = devenv_base_wildcard
-        end
+        filter = devenv_base_branch_wildcard(options.branch)
         image = get_latest_ami(conn, filter)
       end
 
@@ -179,9 +175,9 @@ module OpenShift
 
     desc "launch NAME", "Launches the latest DevEnv instance, tagging with NAME"
     method_option :verifier, :type => :boolean, :desc => "Add verifier functionality (private IP setup and local tests)"
-    method_option :use_stage_image, :type => :boolean, :desc => "Launch a stage DevEnv image"
+    method_option :branch, :default => "master", :desc => "Launch a devenv image from a particular branch"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
-    method_option :express_server, :type => :boolean, :desc => "Set as express server in express.conf and leave on public_ip"
+    method_option :express_server, :type => :boolean, :desc => "Set as express server in express.conf"
     method_option :ssh_config_verifier, :type => :boolean, :desc => "Set as verifier in .ssh/config"
     method_option :instance_type, :required => false, :desc => "Amazon machine type override (default '#{TYPE}')"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
@@ -212,7 +208,7 @@ module OpenShift
 
       update_facts_impl(hostname)
       post_launch_setup(hostname)
-      setup_verifier(hostname, options.use_stage_image?) if options.verifier?
+      setup_verifier(hostname, options.branch) if options.verifier?
 
       validate_instance(hostname, 4)
 
@@ -346,12 +342,7 @@ module OpenShift
       end
 
       def choose_filter_for_launch_ami(options)
-        if options.use_stage_image?
-          filter = devenv_stage_wildcard
-        else
-          filter = devenv_wildcard
-        end
-        filter
+        devenv_branch_wildcard(options.branch)
       end
     end #no_tasks
   end #class
