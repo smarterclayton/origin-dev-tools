@@ -17,27 +17,56 @@ module Origin
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
 
-    desc "build_livecd NAME", "Creates a livecd from a launched Origin instance"
-    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
-    method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
-    method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
-    def build_livecd(name)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+    #desc "build_livecd NAME", "Creates a livecd from a launched Origin instance"
+    #method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    #method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    #method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
+    #def build_livecd(name)
+    #  options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
 
-      # Get the hostname from a tag lookup or assume it's SSH accessible directly
-      conn = connect(options.region)
-      instance = find_instance(conn, name, true, true, ssh_user)
-      hostname = instance.dns_name
-      puts "Done"
-      puts "Hostname: #{hostname}"
+    #  # Get the hostname from a tag lookup or assume it's SSH accessible directly
+    #  conn = connect(options.region)
+    #  instance = find_instance(conn, name, true, true, ssh_user)
+    #  hostname = instance.dns_name
+    #  puts "Done"
+    #  puts "Hostname: #{hostname}"
   
-      begin
-        puts "Launching live-cd build..."
-        out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/origin-server/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
-        puts "Done"
-      ensure
-        terminate_instance(instance) if options.terminate?
+    #  begin
+    #    puts "Launching live-cd build..."
+    #    out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/origin-server/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
+    #    puts "Done"
+    #  ensure
+    #    terminate_instance(instance) if options.terminate?
+    #  end
+    #end
+
+    desc "build_livecd", "Build a livecd"
+    def build_livecd
+      basedir = "/root"
+      remix_dir = "/root/origin-server/remix"
+      remix_ks = "openshift-origin-remix.ks"  
+      
+      FileUtils.mkdir_p remix_dir
+      git_rev = `git log --pretty="format:%H %cd" -1`
+      
+      system "rm -f #{remix_dir}/#{remix_ks}"
+      ks_data = File.read("/usr/share/openshift/kickstarts/#{remix_ks}").gsub(/#ADDITIONAL REPOS/, "repo --name=local-build --baseurl=file://#{basedir}/origin-rpms\n#ADDITIONAL REPOS")
+      ks_data.gsub!(/#GIT_REV#/,git_rev)
+      
+      if File.exist?("#{basedir}/extras")
+        system "createrepo #{basedir}/extras"
+        ks_data.gsub!(/#ADDITIONAL REPOS/, "repo --name=local-extras --baseurl=file://#{basedir}/extras\n#ADDITIONAL REPOS")
+        #ks_data.gsub!(/#cartridge/,"cartridge")
       end
+      File.open("#{remix_dir}/#{remix_ks}", 'w') do |out|
+        out << ks_data
+      end
+      
+      run "/sbin/service mongod stop"
+      run "/usr/sbin/setenforce 0"
+      run "cd #{remix_dir} && livecd-creator -c openshift-origin-remix.ks -f openshift_origin --cache=cache -d -v --logfile=livecd.log"
+      run "/usr/sbin/setenforce 1"
+      run "/sbin/service mongod start"
     end
 
     no_tasks do
