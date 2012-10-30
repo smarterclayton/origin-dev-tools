@@ -245,8 +245,8 @@ module OpenShift
     method_option :mcollective_logs, :type => :boolean, :desc=> "Don't allow mcollective logs to be deleted on rotation"
     method_option :profile_broker, :type => :boolean, :desc=> "Enable profiling code on broker"
     method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
-    method_option :sauce_username, :required => false, :desc => "Sauce Labs username (default '#{SAUCE_USER}')"
-    method_option :sauce_access_key, :required => false, :desc => "Sauce Labs access key (default '#{SAUCE_SECRET}')"
+    method_option :sauce_username, :required => false, :desc => "Sauce Labs username"
+    method_option :sauce_access_key, :required => false, :desc => "Sauce Labs access key"
     method_option :sauce_overage, :type => :boolean, :desc => "Run Sauce Labs tests even if we are over our monthly minute quota"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def test(tag)

@@ -529,9 +529,9 @@ mkdir -p /tmp/rhc/junit
     
     def print_highlighted_output(title, out)
       puts
-      puts "------------------ #{title} ------------------------"
+      puts "------------------ Begin #{title} ------------------------"
       puts out
-      puts "---------------------------------------------------------"
+      puts "------------------- End #{title} -------------------------"
       puts
     end
     
