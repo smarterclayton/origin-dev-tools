@@ -607,21 +607,6 @@ EOF
         end
       end
 
-      def print_and_exit(ret, out)
-        if ret != 0
-          puts "Exiting with error code #{ret}"
-          puts "Output: #{out}"
-          exit ret
-        end
-      end
-
-      def print_highlighted_output(title, out)
-        puts
-        puts "------------------ #{title} ------------------------"
-        puts out
-        puts "---------------------------------------------------------"
-        puts
-      end
     end # no_tasks end
   end # class end
 end # module end

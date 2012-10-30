@@ -526,6 +526,22 @@ mkdir -p /tmp/rhc/junit
       end
       wildcard
     end
+    
+    def print_highlighted_output(title, out)
+      puts
+      puts "------------------ #{title} ------------------------"
+      puts out
+      puts "---------------------------------------------------------"
+      puts
+    end
+    
+    def print_and_exit(ret, out)
+      if ret != 0
+        puts "Exiting with error code #{ret}"
+        puts "Output: #{out}"
+        exit ret
+      end
+    end
 
   end
 end
