@@ -454,33 +454,6 @@ EOF
           terminate_instance(instance) if options.terminate?
         end
       end
-      
-      def update_impl(options)
-        # Warn on uncommitted changes
-        `git diff-index --quiet HEAD`
-        puts "WARNING - Uncommitted repository changes" if $? != 0
-    
-        # Figure out what needs to be built - exclude devenv for syncs
-        sync_dirs = get_sync_dirs
-    
-        sync_dirs.each do |sync_dir|
-          puts "The sync dir: #{sync_dir}"
-          package_name = sync_dir[0]
-          build_dir = sync_dir[1]
-          spec_file = sync_dir[2]
-          build_and_install(package_name, build_dir, spec_file, options)
-        end
-        
-        if options.include_stale?
-          stale_dirs = get_stale_dirs
-          stale_dirs.each do |stale_dir|
-            package_name = stale_dir[0]
-            build_dir = stale_dir[1]
-            spec_file = stale_dir[2]
-            build_and_install(package_name, build_dir, spec_file, options)
-          end
-        end
-      end
 
       def sync_impl(name, options)
         # Get the hostname from a tag lookup or assume it's SSH accessible directly
@@ -622,16 +595,16 @@ EOF
             manifest = rpm_manifest(hostname, ssh_user)              
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
-          end
-
-          unless options.skip_verify? || options.install_required_packages?
-            # if eth0 config was modified for AMI registration, register the broker dns again
-            if options[:register]
+            
+            unless options.install_required_packages?
+              # if eth0 config was modified for AMI registration, register the broker dns again
               puts "Registering broker dns again..."
               out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv register_broker_dns\"", 60 * 5, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
             end
+          end
 
+          unless options.skip_verify? || options.install_required_packages?
             scp_remote_tests(hostname, options.branch, "~", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end

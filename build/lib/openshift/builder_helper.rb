@@ -139,6 +139,10 @@ mkdir -p /tmp/rhc/junit
       end if exists
       exists
     end
+    
+    def restart_services()
+      run("service mcollective restart; service openshift-broker restart; service openshift-console restart", :verbose => options.verbose?)
+    end
 
     def update_test_bundle(hostname, user, *dirs)
       cmd = ""
