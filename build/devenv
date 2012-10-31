@@ -141,7 +141,7 @@ module Origin
     end
 
     desc "remove_hwaddr", "Remove HWADDR from the eth0 network config", :hide => true
-    def remove_hwaddr()
+    def remove_hwaddr
       File.open("/etc/sysconfig/network-scripts/ifcfg-eth0", 'w') do |out|
         out << eth0_config_without_hwaddr
       end
@@ -150,7 +150,7 @@ module Origin
     desc "register_broker_dns", "Register broker dns", :hide => true
     def register_broker_dns
       ext_address = `/sbin/ip addr show dev eth0 | awk '/inet / { split(\$2,a, "/") ; print a[1];}'`
-      system("/usr/bin/oo-register-dns -h broker -n #{ext_address.strip}")
+      system("/usr/sbin/oo-register-dns -h broker -n #{ext_address.strip}")
     end
 
 
@@ -164,7 +164,6 @@ BOOTPROTO=dhcp
 DNS1=127.0.0.1
 DNS2=8.8.8.8
 DNS3=8.8.4.4
-TYPE=Ethernet
 DEFROUTE=yes
 PEERROUTES=yes
 EOF
@@ -507,7 +506,7 @@ EOF
           end
 
           puts "Restarting services..."
-          out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 5, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su -c /usr/sbin/oo-setup-broker", 60 * 5, true, 1, ssh_user)
         end
 
         if ret != 0
@@ -529,7 +528,7 @@ EOF
         hostname = instance.dns_name
         puts "Done"
         puts "Hostname: #{hostname}"
-    
+
         ret, out = 0, nil
         begin
           if options.install_required_packages?
@@ -592,31 +591,27 @@ EOF
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Downgrade Output", out)
           
+          # Add the paths to the users .bashrc file
+          out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
+    
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
             out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
 
             puts "Installing SELinux policies..."
-            out, ret = ssh(hostname, "su -c \"yum install -y http://kojipkgs.fedoraproject.org/packages/selinux-policy/3.10.0/93.fc16/noarch/selinux-policy-3.10.0-93.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
-            print_and_exit(ret, out) unless ret == 0 || out.match(/Nothing to do/)
-            
-            out, ret = ssh(hostname, "su -c \"yum install -y http://kojipkgs.fedoraproject.org//packages/selinux-policy/3.10.0/93.fc16/noarch/selinux-policy-targeted-3.10.0-93.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum install -y --skip-broken http://kojipkgs.fedoraproject.org/packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-3.10.0-94.fc16.noarch.rpm http://kojipkgs.fedoraproject.org//packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-targeted-3.10.0-94.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
             print_and_exit(ret, out) unless ret == 0 || out.match(/Nothing to do/)
 
             puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c /usr/sbin/oo-setup-broker", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
-            puts "Done"
           end
           
           out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user .\"", 60 * 2, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
           puts "Done"
       
-          # Add the paths to the users .bashrc file
-          out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
-    
           image_id = nil
           if options[:register]
             # reset the eth0 network config to remove the HWADDR
@@ -672,15 +667,9 @@ EOF
       end
       
       def post_launch_setup(hostname)
-        puts "Running broker setup..."
-        out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 5, true, 1, ssh_user)
-        puts "Done"
-
-        if ret != 0
-          puts "Exiting with error code #{ret}"
-          puts "Output: #{out}"
-          exit ret
-        end
+        puts "Registering broker dns again..."
+        out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv register_broker_dns\"", 60 * 5, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
       end
 
     end # no_tasks end
