@@ -140,7 +140,35 @@ module Origin
       end
     end
 
+    desc "remove_hwaddr", "Remove HWADDR from the eth0 network config", :hide => true
+    def remove_hwaddr()
+      File.open("/etc/sysconfig/network-scripts/ifcfg-eth0", 'w') do |out|
+        out << eth0_config_without_hwaddr
+      end
+    end
+    
+    desc "register_broker_dns", "Register broker dns", :hide => true
+    def register_broker_dns
+      ext_address = `/sbin/ip addr show dev eth0 | awk '/inet / { split(\$2,a, "/") ; print a[1];}'`
+      system("/usr/bin/oo-register-dns -h broker -n #{ext_address.strip}")
+    end
+
+
     no_tasks do
+
+      def eth0_config_without_hwaddr 
+        <<-EOF
+DEVICE=eth0
+ONBOOT=yes
+BOOTPROTO=dhcp
+DNS1=127.0.0.1
+DNS2=8.8.8.8
+DNS3=8.8.4.4
+TYPE=Ethernet
+DEFROUTE=yes
+PEERROUTES=yes
+EOF
+      end
 
       def local_repo_string
         <<-EOF
@@ -555,7 +583,7 @@ EOF
           end
         
           puts "Installing pre-requisite packages"
-          out, ret = ssh(hostname, "cd /data/origin-dev-tools && build/devenv install_required_packages", 60 * 30, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv install_required_packages\"", 60 * 30, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
@@ -568,6 +596,18 @@ EOF
             puts "Installing Origin packages..."
             out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
+
+            puts "Installing SELinux policies..."
+            out, ret = ssh(hostname, "su -c \"yum install -y http://kojipkgs.fedoraproject.org/packages/selinux-policy/3.10.0/93.fc16/noarch/selinux-policy-3.10.0-93.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
+            print_and_exit(ret, out) unless ret == 0 || out.match(/Nothing to do/)
+            
+            out, ret = ssh(hostname, "su -c \"yum install -y http://kojipkgs.fedoraproject.org//packages/selinux-policy/3.10.0/93.fc16/noarch/selinux-policy-targeted-3.10.0-93.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
+            print_and_exit(ret, out) unless ret == 0 || out.match(/Nothing to do/)
+
+            puts "Running broker setup..."
+            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            puts "Done"
           end
           
           out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user .\"", 60 * 2, true, 1, ssh_user)
@@ -575,20 +615,27 @@ EOF
           puts "Done"
       
           # Add the paths to the users .bashrc file
-          out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
     
           image_id = nil
           if options[:register]
+            # reset the eth0 network config to remove the HWADDR
+            puts "Removing HWADDR from eth0 network config..."
+            out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv remove_hwaddr\"", 60 * 2, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+
             manifest = rpm_manifest(hostname, ssh_user)              
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/bin/oo-setup-broker", 60 * 15, true, 2, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            puts "Done"
+            # if eth0 config was modified for AMI registration, register the broker dns again
+            if options[:register]
+              puts "Registering broker dns again..."
+              out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv register_broker_dns\"", 60 * 5, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+            end
 
             scp_remote_tests(hostname, options.branch, "~", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
