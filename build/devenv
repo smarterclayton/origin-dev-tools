@@ -147,12 +147,6 @@ module Origin
       end
     end
     
-    desc "register_broker_dns", "Register broker dns", :hide => true
-    def register_broker_dns
-      ext_address = `/sbin/ip addr show dev eth0 | awk '/inet / { split(\$2,a, "/") ; print a[1];}'`
-      system("/usr/sbin/oo-register-dns -h broker -n #{ext_address.strip}")
-    end
-
 
     no_tasks do
 
@@ -595,13 +589,6 @@ EOF
             manifest = rpm_manifest(hostname, ssh_user)              
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
-            
-            unless options.install_required_packages?
-              # if eth0 config was modified for AMI registration, register the broker dns again
-              puts "Registering broker dns again..."
-              out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv register_broker_dns\"", 60 * 5, true, 1, ssh_user)
-              print_and_exit(ret, out) if ret != 0
-            end
           end
 
           unless options.skip_verify? || options.install_required_packages?
@@ -640,8 +627,12 @@ EOF
       end
       
       def post_launch_setup(hostname)
-        puts "Registering broker dns again..."
-        out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv register_broker_dns\"", 60 * 5, true, 1, ssh_user)
+        puts "Registering broker dns..."
+        cmd = %{
+ext_address=`/sbin/ip addr show dev eth0 | grep inet | cut -d/ -f1 | rev | cut -d \" \" -f1 | rev`
+su -c \"/usr/sbin/oo-register-dns -h broker -n $ext_address\"
+}
+        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
       end
 
