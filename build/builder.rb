@@ -23,6 +23,7 @@ module OpenShift
       def post_launch_setup(hostname)
         # Child classes can override, if required
       end
+
     end
     
     desc "find_and_build_specs", "Builds all non ignored specs in the current directory", :hide => true
@@ -149,7 +150,42 @@ module OpenShift
     method_option :retry_failure_with_tag, :type => :boolean, :default=>true, :desc => "If a package fails to build, tag it and retry the build."
     def update
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-      update_impl(options)
+      # Warn on uncommitted changes
+      `git diff-index --quiet HEAD`
+      puts "WARNING - Uncommitted repository changes" if $? != 0
+    
+      # Figure out what needs to be built - exclude devenv for syncs
+      sync_dirs = get_sync_dirs
+    
+      sync_dirs.each do |sync_dir|
+        package_name = sync_dir[0]
+        build_dir = sync_dir[1]
+        spec_file = sync_dir[2]
+    
+        if IGNORE_PACKAGES.include? package_name
+          puts "Skipping #{package_name}"
+          return
+        else
+          build_and_install(package_name, build_dir, spec_file, options)
+        end
+      end
+    
+      if options.include_stale?
+        stale_dirs = get_stale_dirs
+        stale_dirs.each do |stale_dir|
+          package_name = stale_dir[0]
+          build_dir = stale_dir[1]
+          spec_file = stale_dir[2]
+    
+          if IGNORE_PACKAGES.include? package_name
+            puts "Skipping #{package_name}"
+            return
+          else
+            build_and_install(package_name, build_dir, spec_file, options)
+          end
+        end
+      end
+      restart_services
     end
 
     desc "sync NAME", "Synchronize a local git repo with a remote DevEnv instance.  NAME should be ssh resolvable."

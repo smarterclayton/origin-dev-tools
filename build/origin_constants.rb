@@ -53,3 +53,5 @@ ignore_packages << "openshift-origin-cartridge-nodejs-0.6" if `yum search nodejs
 
 IGNORE_PACKAGES = ignore_packages
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
+  
+ACCEPT_DEVENV_SCRIPT = 'true'
