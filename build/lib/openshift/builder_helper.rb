@@ -75,7 +75,7 @@ module OpenShift
       git_archive_commands = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dir = "#{repo_parent_dir}/#{repo_name}-bare"
-        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix openshift-test/ --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
+        git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix openshift-test/#{::OPENSHIFT_ARCHIVE_DIR_MAP[repo_name] || ''} --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
       ssh(hostname, %{

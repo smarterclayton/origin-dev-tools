@@ -33,6 +33,7 @@ CAN_SSH_TIMEOUT=90
 SIBLING_REPOS = {'origin-server' => ['../origin-server'],
                  'rhc' => ['../rhc'],
                  'origin-dev-tools' => ['../origin-dev-tools']}
+OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
 SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin-server.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git'}
