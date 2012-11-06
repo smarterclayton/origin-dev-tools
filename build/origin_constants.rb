@@ -29,6 +29,7 @@ SAUCE_OS = ""
 SAUCE_BROWSER = ""
 SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
+SLEEP_AFTER_LAUNCH=60
 
 SIBLING_REPOS = {'origin-server' => ['../origin-server'],
                  'rhc' => ['../rhc'],

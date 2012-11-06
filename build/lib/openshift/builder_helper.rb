@@ -91,14 +91,14 @@ mkdir -p /tmp/rhc/junit
     
     def scp_remote_tests(hostname, branch, repo_parent_dir="/root", user="root")
       init_repos(hostname, true, nil, repo_parent_dir, user)
-      sync_repos(hostname)
+      sync_repos(hostname, repo_parent_dir, user)
       update_remote_tests(hostname, branch, repo_parent_dir, user)
     end
     
-    def sync_repos(hostname)
+    def sync_repos(hostname, remote_repo_parent_dir="/root", sshuser="root")
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dirs.each do |repo_dir|
-          break if sync_sibling_repo(repo_name, repo_dir, hostname)
+          break if sync_sibling_repo(repo_name, repo_dir, hostname, remote_repo_parent_dir, sshuser)
         end
       end
     end

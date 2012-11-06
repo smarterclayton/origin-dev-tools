@@ -238,8 +238,8 @@ module OpenShift
       puts "Done"
       puts "Hostname: #{hostname}"
 
-      puts "Sleeping for 30 seconds to let node stabilize..."
-      sleep 30
+      puts "Sleeping for #{SLEEP_AFTER_LAUNCH} seconds to let node stabilize..."
+      sleep SLEEP_AFTER_LAUNCH
       puts "Done"
 
       update_facts_impl(hostname)
