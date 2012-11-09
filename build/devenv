@@ -343,7 +343,6 @@ EOF
             end
   
             unless options.exclude_site?
-              puts "Warning: Tests for the site are currently not supported"
             end
 
             unless options.exclude_rhc?
@@ -423,7 +422,12 @@ EOF
   
         ensure
           download_artifacts(hostname)
-          terminate_instance(instance) if options.terminate?
+          
+          begin
+            terminate_instance(instance) if options.terminate?
+          rescue
+            # suppress termination errors - they have been logged already
+          end
         end
       end
 
@@ -528,11 +532,14 @@ EOF
           
           # Add the paths to the users .bashrc file
           out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
-    
+
           if options.install_from_source? || options.install_from_local_source?
             puts "Installing Origin packages..."
             out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
+
+            out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
+            print_highlighted_output("Installed Origin Packages", out)
 
             puts "Installing SELinux policies..."
             out, ret = ssh(hostname, "su -c \"yum install -y --skip-broken http://kojipkgs.fedoraproject.org/packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-3.10.0-94.fc16.noarch.rpm http://kojipkgs.fedoraproject.org//packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-targeted-3.10.0-94.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
@@ -558,8 +565,11 @@ EOF
             image_id = registered_ami.id
           end
 
-          # Register broker dns and restart the network  
-          post_launch_setup(hostname) unless options.install_required_packages?
+          # Register broker dns and restart the network
+          unless options.install_required_packages?  
+            post_launch_setup(hostname)
+            restart_services_remote(hostname)
+          end
 
           unless options.skip_verify? || options.install_required_packages?
             scp_remote_tests(hostname, options.branch, "~", ssh_user)
@@ -567,7 +577,11 @@ EOF
           end
           puts "Done."
         ensure
-          terminate_instance(instance) if options.terminate?
+          begin
+            terminate_instance(instance) if options.terminate?
+          rescue
+            # suppress termination errors - they have been logged already
+          end
         end
       end
   
@@ -629,6 +643,32 @@ su -c \"/etc/init.d/network restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
+      end
+
+      def restart_services_remote(hostname)
+        puts "Restarting services..."
+
+        cmd = %{
+su -c \"service qpidd restart; service mcollective restart; service mongod restart\"
+su -c \"service httpd restart; service openshift-broker restart\"
+}
+        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
+
+        puts "Sleep for 2 minutes after restarting services"
+        sleep 120
+        puts "Done"
+      end
+
+      def restart_services()
+        puts "Restarting services..."
+        run("cd /var/www/openshift/broker/ ; rm -f Gemfile.lock; bundle show; cd - ;")
+        run("service qpidd restart; service mcollective restart; service mongod restart", :verbose => true)
+        run("service httpd restart; service openshift-broker restart;", :verbose => true)
+
+        puts "Sleep for 2 minutes after restarting services"
+        sleep 120
+        puts "Done"
       end
 
     end # no_tasks end

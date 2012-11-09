@@ -80,7 +80,7 @@ module OpenShift
 
       ssh(hostname, %{
 set -e;
-rm -rf #{repo_parent_dir}/openshift-test
+su -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
 mkdir -p /tmp/rhc/junit
 }, 60, false, 2, user)
@@ -140,10 +140,6 @@ mkdir -p /tmp/rhc/junit
       exists
     end
     
-    def restart_services()
-      run("service mcollective restart; service openshift-broker restart; service openshift-console restart", :verbose => options.verbose?)
-    end
-
     def update_test_bundle(hostname, user, *dirs)
       cmd = ""
       dirs.each do |dir|
