@@ -559,7 +559,7 @@ EOF
             # reset the eth0 network config to remove the HWADDR
             puts "Removing HWADDR and DNS entries from eth0 network config..."
             reset_eth0_dns_config(hostname)
-
+            
             manifest = rpm_manifest(hostname, ssh_user)              
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
@@ -623,10 +623,11 @@ DNS3=8.8.4.4
 DEFROUTE=yes
 PEERROUTES=yes\\\" > /etc/sysconfig/network-scripts/ifcfg-eth0\"
 
+su -c \"/etc/init.d/network restart\"
+su -c \"service named restart\"
+
 ext_address=`/sbin/ip addr show dev eth0 | grep inet | cut -d/ -f1 | rev | cut -d \" \" -f1 | rev`
 su -c \"/usr/sbin/oo-register-dns -h broker -n $ext_address\"
-
-su -c \"/etc/init.d/network restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
@@ -640,6 +641,7 @@ BOOTPROTO=dhcp
 ONBOOT=yes\\\" > /etc/sysconfig/network-scripts/ifcfg-eth0\"
 
 su -c \"/etc/init.d/network restart\"
+su -c \"service named restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
@@ -655,8 +657,8 @@ su -c \"service httpd restart; service openshift-broker restart\"
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
 
-        puts "Sleep for 2 minutes after restarting services"
-        sleep 120
+        puts "Sleep for 30 seconds after restarting services"
+        sleep 30
         puts "Done"
       end
 
@@ -666,8 +668,8 @@ su -c \"service httpd restart; service openshift-broker restart\"
         run("service qpidd restart; service mcollective restart; service mongod restart", :verbose => true)
         run("service httpd restart; service openshift-broker restart;", :verbose => true)
 
-        puts "Sleep for 2 minutes after restarting services"
-        sleep 120
+        puts "Sleep for 30 seconds after restarting services"
+        sleep 30
         puts "Done"
       end
 
