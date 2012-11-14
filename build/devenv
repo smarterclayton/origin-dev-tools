@@ -316,9 +316,9 @@ EOF
                 exit 1
               end
             end
-          elsif options.include_rcov?
-            test_queues[0] << ["OpenShift Origin Node Unit Coverage", "cd openshift-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
-            test_queues[1] << ["OpenShift Origin Broker Unit and Functional Coverage", "cd openshift-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
+          elsif options.include_coverage?
+            #test_queues[0] << ["OpenShift Origin Node Unit Coverage", "cd openshift-test/node; rake rcov; cp -a coverage /tmp/rhc/openshift_node_coverage"]
+            #test_queues[1] << ["OpenShift Origin Broker Unit and Functional Coverage", "cd openshift-test/broker; rake rcov; cp -a test/coverage /tmp/rhc/openshift_broker_coverage"]
           elsif options.include_cucumber
             timeout = @@SSH_TIMEOUT
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?

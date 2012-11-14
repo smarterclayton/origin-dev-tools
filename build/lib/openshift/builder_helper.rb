@@ -143,7 +143,7 @@ mkdir -p /tmp/rhc/junit
     def update_test_bundle(hostname, user, *dirs)
       cmd = ""
       dirs.each do |dir|
-        cmd += "cd ~/openshift-test/#{dir}; rm Gemfile.lock; scl enable ruby193 \"bundle install --local\"; touch Gemfile.lock;\n"
+        cmd += "cd ~/openshift-test/#{dir}; rm Gemfile.lock; bundle install --local; touch Gemfile.lock;\n"
       end
       ssh(hostname, cmd, 60, false, 1, user)
     end
