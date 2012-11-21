@@ -155,21 +155,13 @@ EOF
       end
 
       def repo_string
-      redhat_release = File.open("/etc/redhat-release").read
-        if redhat_release.match(/Fedora/)
+        if DISTRO_NAME == 'Fedora'
         <<-EOF
 [openshift-origin-nightly]
 name    = openshift-origin-nightly
 baseurl = http://mirror.openshift.com/pub/origin-server/fedora-$releasever/$basearch
 gpgcheck= 0
-enabled = 1
-retries = 0
-
-[fedora-ruby]
-name    = fedora-ruby
-baseurl = http://mirror.openshift.com/pub/fedora-ruby/$basearch
-gpgcheck= 0
-enabled = 1
+enabled = 0
 retries = 0
 
 [openshift]
