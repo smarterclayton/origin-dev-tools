@@ -46,7 +46,7 @@ ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO]
 CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
 redhat_release = File.open("/etc/redhat-release").read
-ignore_packages = ['rubygem-openshift-origin-auth-kerberos', 'rubygem-openshift-origin-console', 'openshift-console', 'openshift-origin-cartridge-jbossews-1.0', 'openshift-origin-cartridge-jbossews-2.0']
+ignore_packages = ['rubygem-openshift-origin-auth-kerberos', 'rubygem-openshift-origin-console', 'openshift-console', 'openshift-origin-cartridge-jbossews-1.0', 'openshift-origin-cartridge-jbossews-2.0', 'openshift-origin-util-scl']
 ignore_packages << "openshift-origin-cartridge-ruby-1.9-scl" if redhat_release.match(/Fedora/)
 ignore_packages << "openshift-origin-cartridge-jbosseap-6.0" if `yum search jboss-eap6 2> /dev/null`.match(/No Matches found/)
 ignore_packages << "openshift-origin-cartridge-jbossas-7" if `yum search jboss-as7 2> /dev/null`.match(/No Matches found/)
