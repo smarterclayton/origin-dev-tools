@@ -412,7 +412,7 @@ END
             elsif retry_individ && output.include?("Failure:") && output.include?("rake_test_loader")
               found_test = false
               output.lines.each do |line|
-                if line =~ /\A(test_\w+)\((\w+Test)\) \[\/*(.*?_test\.rb):(\d+)\]:/
+                if line =~ /\A(test_\w+)\((\w+Test)\) \[\/.*\/(test\/.*_test\.rb):(\d+)\]:/
                   found_test = true
                   test_name = $1
                   class_name = $2
