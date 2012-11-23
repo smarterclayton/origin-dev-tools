@@ -60,7 +60,7 @@ module OpenShift
           exit_code = 1
           Timeout::timeout(timeout) {
             output = `#{scp_cmd}`
-            exit_code = $?
+            exit_code = $?.exitstatus
           }
           if exit_code == 0
             break
