@@ -39,22 +39,37 @@ module OpenShift
       remove_dir '/tmp/tito/'
       FileUtils.mkdir_p '/tmp/tito/'
       puts "Building in #{build_dir}"
+      spec_file = File.expand_path(spec_file)
       inside(File.expand_path("#{build_dir}", File.dirname(File.dirname(File.dirname(File.dirname(__FILE__)))))) do
         # Build and install the RPM's locally
         unless run("tito build --rpm --test", :verbose => options.verbose?)
-          if options.retry_failure_with_tag
-            # Tag to trick tito to build
-            commit_id = `git log --pretty=format:%%H --max-count=1 %s" % .`
-            spec_file_name = File.basename(spec_file)
-            version = get_version(spec_file_name)
-            next_version = next_tito_version(version, commit_id)
-            puts "current spec file version #{version} next version #{next_version}"
-            unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; tito build --rpm --test", :verbose => options.verbose?)
-              FileUtils.rm_rf '/tmp/devenv/sync/'
-              exit 1
+          package = Package.new(spec_file, File.dirname(spec_file))
+          package_name = package.name
+          ignore_packages = get_ignore_packages
+          packages = get_packages
+          required_packages_str = ''
+          unless ignore_packages.include?(package_name)
+            package.build_requires.each do |r_package|
+              required_packages_str += " \\\"#{r_package.yum_name_with_version}\\\"" unless packages.include?(r_package.name)
             end
-          else
-            puts "Package #{package_name} failed to build."
+          end
+          run("su -c \"yum install -y --skip-broken #{required_packages_str} 2>&1\"") unless required_packages_str.empty?
+
+          if required_packages_str.empty? || !run("tito build --rpm --test", :verbose => options.verbose?)
+            if options.retry_failure_with_tag
+              # Tag to trick tito to build
+              commit_id = `git log --pretty=format:%%H --max-count=1 %s" % .`
+              spec_file_name = File.basename(spec_file)
+              version = get_version(spec_file_name)
+              next_version = next_tito_version(version, commit_id)
+              puts "current spec file version #{version} next version #{next_version}"
+              unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; tito build --rpm --test", :verbose => options.verbose?)
+                FileUtils.rm_rf '/tmp/devenv/sync/'
+                exit 1
+              end
+            else
+              puts "Package #{package_name} failed to build."
+            end
           end
         end
         Dir.glob('/tmp/tito/x86_64/*.rpm').each {|file|
