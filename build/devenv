@@ -643,7 +643,7 @@ su -c \"service named restart\"
         puts "Restarting services..."
 
         cmd = %{
-su -c \"service qpidd restart; service mcollective restart; service mongod restart\"
+su -c \"service qpidd restart; service mcollective restart\"
 su -c \"service httpd restart; service openshift-broker restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
@@ -657,7 +657,7 @@ su -c \"service httpd restart; service openshift-broker restart\"
       def restart_services()
         puts "Restarting services..."
         run("cd /var/www/openshift/broker/ ; rm -f Gemfile.lock; bundle show; cd - ;")
-        run("service qpidd restart; service mcollective restart; service mongod restart", :verbose => true)
+        run("service qpidd restart; service mcollective restart", :verbose => true)
         run("service httpd restart; service openshift-broker restart;", :verbose => true)
 
         puts "Sleep for 30 seconds after restarting services"
