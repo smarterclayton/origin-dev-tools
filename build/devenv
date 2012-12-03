@@ -284,25 +284,7 @@ EOF
                 puts "Warning: Site tests are currently not supported"
               when 'rhc'
                 test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended openshift-test/tests\"", {:retry_individually => true}]
-                base_str = "QUIET=1 RHC_SERVER=localhost cucumber #{CUCUMBER_OPTIONS} openshift-test/features"
-                tags = [
-                  [ :client, :domain, :sshkey ],
-                  [ :application ],
-                  [ :single_cartridge ],
-                  [ :multiple_cartridge ]
-                ]
-                #(0..3).each do |q|
-                #  tags[q].each do |tag|
-                #    test_queues[q] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag} "]
-                #  end
-                #end
-
-                # TODO: Tests need to run serially until they are totally isolated
-                #  eg - some will destroy a domain or app that another is working on
-                tags.flatten.each do |tag|
-                  test_queues[0] << ["RHC Functional: #{tag}", "#{base_str} -t @#{tag}", {:retry_individually => true}]
-                end
-
+                test_queues[1] << ["RHC Integration", "cd openshift-test/rhc && RHC_SERVER=localhost QUIET=1 bundle exec \"cucumber #{CUCUMBER_OPTIONS} features\"", {:retry_individually => true}]
               else
                 puts "Not supported for extended: #{extended_test}"
                 exit 1
