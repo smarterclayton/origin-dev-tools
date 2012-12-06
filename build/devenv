@@ -81,7 +81,12 @@ module Origin
 
       puts "Installing required gems..."
       run("gem install rspec -v '1.1.12'", options)
-      
+
+      if DISTRO_NAME == 'Fedora'
+        run "sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
+        run "sudo rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key"
+      end
+
       old_install_required_packages
     end
     

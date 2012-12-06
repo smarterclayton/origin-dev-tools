@@ -53,25 +53,18 @@ DISTRO_VERSION = `lsb_release -r`.gsub(/Release:\s*/,'').strip
 
 ignore_packages = ['rubygem-openshift-origin-auth-kerberos', 'openshift-origin-cartridge-jbossews-1.0', 'openshift-origin-cartridge-jbossews-2.0']
 if DISTRO_NAME == 'Fedora' 
-  #ignore_packages << 'rubygem-openshift-origin-console'
-  #ignore_packages << 'openshift-console' 
-  #ignore_packages << 'openshift-origin-node-proxy' 
-
   #RHEL 6.3 cartridges
-  ignore_packages << 'openshift-origin-cartridge-php-5.3' 
   ignore_packages << 'openshift-origin-cartridge-postgresql-8.4' 
   ignore_packages << "openshift-origin-cartridge-ruby-1.8"
   ignore_packages << "openshift-origin-cartridge-ruby-1.9-scl"
   ignore_packages << 'openshift-origin-util-scl' 
+  ignore_packages << 'openshift-origin-cartridge-jbossas-7'
+  ignore_packages << 'openshift-origin-cartridge-switchyard-0.6'
 end
 
-ignore_packages << "openshift-origin-cartridge-ruby-1.9" if `yum whatprovides "ruby(abi)" | grep "ruby(abi) = 1.9.1"`.empty?
-ignore_packages << "openshift-origin-cartridge-10gen-mms-agent-0.1" if `yum search mms-agent 2> /dev/null`.match(/No Matches found/)
 ignore_packages << "openshift-origin-cartridge-jbosseap-6.0" if `yum search jboss-eap6 2> /dev/null`.match(/No Matches found/)
 ignore_packages << "openshift-origin-cartridge-jbossas-7" if `yum search jboss-as7 2> /dev/null`.match(/No Matches found/)
 ignore_packages << "openshift-origin-cartridge-switchyard-0.6" if `yum search jboss-as7 2> /dev/null`.match(/No Matches found/)
-ignore_packages << "openshift-origin-cartridge-jenkins-1.4" if `yum search jenkins.noarch 2> /dev/null`.match(/No Matches found/)
-ignore_packages << "openshift-origin-cartridge-nodejs-0.6" if `yum search nodejs.x86_64 2> /dev/null`.match(/No Matches found/)
 
 IGNORE_PACKAGES = ignore_packages
 $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
