@@ -28,13 +28,19 @@ SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
 SLEEP_AFTER_LAUNCH=60
 
-SIBLING_REPOS = {'origin-server' => ['../origin-server'],
-                 'rhc' => ['../rhc'],
-                 'origin-dev-tools' => ['../origin-dev-tools']}
+SIBLING_REPOS = {
+                  'origin-server' => ['../origin-server'],
+                  'rhc' => ['../rhc'],
+                  'origin-dev-tools' => ['../origin-dev-tools'],
+                  'origin-community-cartridges' => ['../origin-community-cartridges']
+               }
 OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
-SIBLING_REPOS_GIT_URL = {'origin-server' => 'https://github.com/openshift/origin-server.git',
+SIBLING_REPOS_GIT_URL = {
+                        'origin-server' => 'https://github.com/openshift/origin-server.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
-                        'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git'}
+                        'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git',
+                        'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git'
+                      }
 
 DEV_TOOLS_REPO = 'origin-dev-tools'
 DEV_TOOLS_EXT_REPO = DEV_TOOLS_REPO
@@ -47,8 +53,9 @@ DISTRO_VERSION = `lsb_release -r`.gsub(/Release:\s*/,'').strip
 
 ignore_packages = ['rubygem-openshift-origin-auth-kerberos', 'openshift-origin-cartridge-jbossews-1.0', 'openshift-origin-cartridge-jbossews-2.0']
 if DISTRO_NAME == 'Fedora' 
-  ignore_packages << 'rubygem-openshift-origin-console'
-  ignore_packages << 'openshift-console' 
+  #ignore_packages << 'rubygem-openshift-origin-console'
+  #ignore_packages << 'openshift-console' 
+  #ignore_packages << 'openshift-origin-node-proxy' 
 
   #RHEL 6.3 cartridges
   ignore_packages << 'openshift-origin-cartridge-php-5.3' 
