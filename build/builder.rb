@@ -108,6 +108,7 @@ module OpenShift
     method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
     method_option :include_coverage, :type => :boolean, :desc => "Include coverage analysis on unit tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
+    method_option :base_image_filter, :desc => "Filter for the base image to use EX: devenv-base_*"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :install_from_source, :type => :boolean, :desc => "Indicates whether to build based off origin/master"
     method_option :install_from_local_source, :type => :boolean, :desc => "Indicates whether to build based on your local source"
@@ -137,7 +138,12 @@ module OpenShift
         end
       else
         # Get the latest devenv base image and create a new instance
-        filter = devenv_base_branch_wildcard(options.branch)
+        filter = nil
+        if options.base_image_filter
+          filter = options.base_image_filter
+        else
+          filter = devenv_base_branch_wildcard(options.branch)
+        end
         image = get_latest_ami(conn, filter)
       end
 
