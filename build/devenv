@@ -78,6 +78,10 @@ module Origin
       File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
         out << repo_string
       end
+
+      puts "Installing required gems..."
+      run("gem install rspec -v '1.1.12'", options)
+      
       old_install_required_packages
     end
     
@@ -90,7 +94,7 @@ module Origin
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       if options.incremental
         options.retry_failure_with_tag = false
-        update_impl(options)
+        update
       else
         FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
         FileUtils.rm_f "/etc/yum.repos.d/local-openshift-origin.repo"
@@ -161,18 +165,7 @@ EOF
 name    = openshift-origin-nightly
 baseurl = http://mirror.openshift.com/pub/origin-server/fedora-$releasever/$basearch
 gpgcheck= 0
-enabled = 0
-retries = 0
-
-[openshift]
-name=Openshift
-baseurl=https://openshift.redhat.com/app/repo/rpms/$releasever/$basearch/
-failovermethod=priority
-skip_if_unavailable=1
-gpgkey=https://openshift.redhat.com/app/repo/RPM-GPG-KEY-redhat-beta
-ggpkey=https://openshift.redhat.com/app/repo/RPM-GPG-KEY-redhat-release
-enabled=1
-gpgcheck=1
+enabled = 1
 retries = 0
 EOF
         else
