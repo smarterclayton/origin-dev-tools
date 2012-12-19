@@ -74,6 +74,9 @@ module Origin
     end
 
     def install_required_packages
+      puts "Install packages required for build"
+      run "yum install -y tito rubygems rubygem-rake yum-priorities git vim rubygem-thor rubygem-parseconfig make rubygem-aws-sdk tig mlocate bash-completion rubygem-yard rubygem-redcarpet ruby-devel redhat-lsb wget"
+ 
       FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
       File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
         out << repo_string
@@ -83,8 +86,8 @@ module Origin
       run("gem install rspec -v '1.1.12'", options)
 
       if DISTRO_NAME == 'Fedora'
-        run "sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
-        run "sudo rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key"
+        run "wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
+        run "rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key"
       end
 
       old_install_required_packages
