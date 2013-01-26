@@ -32,14 +32,16 @@ SIBLING_REPOS = {
                   'origin-server' => ['../origin-server'],
                   'rhc' => ['../rhc'],
                   'origin-dev-tools' => ['../origin-dev-tools'],
-                  'origin-community-cartridges' => ['../origin-community-cartridges']
+                  'origin-community-cartridges' => ['../origin-community-cartridges'],                  
+                  'puppet-openshift_origin' => ['../puppet-openshift_origin'],
                }
 OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
 SIBLING_REPOS_GIT_URL = {
                         'origin-server' => 'https://github.com/openshift/origin-server.git',
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git',
-                        'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git'
+                        'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git',
+                        'puppet-openshift_origin' => 'https://github.com/openshift/puppet-openshift_origin.git'
                       }
 
 DEV_TOOLS_REPO = 'origin-dev-tools'

@@ -88,7 +88,7 @@ module OpenShift
     def install_required_packages
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       packages = get_required_packages
-      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"ruby-qpid-* qpid-* java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
+      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
         exit 1
       end
     end
