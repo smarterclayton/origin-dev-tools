@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 $: << File.expand_path(File.dirname(__FILE__))
+require 'lib/openshift/setup_helper'
+SetupHelper::ensure_build_requirements
 
 require 'rubygems'
 require 'thor'
@@ -16,29 +18,6 @@ include FileUtils
 module Origin
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
-
-    #desc "build_livecd NAME", "Creates a livecd from a launched Origin instance"
-    #method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
-    #method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
-    #method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
-    #def build_livecd(name)
-    #  options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-
-    #  # Get the hostname from a tag lookup or assume it's SSH accessible directly
-    #  conn = connect(options.region)
-    #  instance = find_instance(conn, name, true, true, ssh_user)
-    #  hostname = instance.dns_name
-    #  puts "Done"
-    #  puts "Hostname: #{hostname}"
-  
-    #  begin
-    #    puts "Launching live-cd build..."
-    #    out = ssh(hostname, "export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH && cd /data/origin-server/build && rake devcd", 60 * 60 * 2, false, 1, "ec2-user")
-    #    puts "Done"
-    #  ensure
-    #    terminate_instance(instance) if options.terminate?
-    #  end
-    #end
 
     desc "build_livecd", "Build a livecd"
     def build_livecd
@@ -75,21 +54,19 @@ module Origin
 
     def install_required_packages
       puts "Install packages required for build"
-      run "yum install -y tito rubygems rubygem-rake yum-priorities git vim rubygem-thor rubygem-parseconfig make rubygem-aws-sdk tig mlocate bash-completion rubygem-yard rubygem-redcarpet ruby-devel redhat-lsb wget"
- 
-      FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
-      File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
-        out << repo_string
-      end
-
-      puts "Installing required gems..."
-      run("gem install rspec -v '1.1.12'", options)
-
+      run "yum install -y tito make tig mlocate bash-completion ruby-devel activemq activemq-client puppet"
+      
       if DISTRO_NAME == 'Fedora'
         run "wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
         run "rpm --import http://pkg.jenkins-ci.org/redhat/jenkins-ci.org.key"
       end
 
+      run "yum update -y --enablerepo puppetlabs-products facter"
+
+      puts "Installing required gems..."
+      run("gem install rspec -v '1.1.12'", options)
+      
+      run( "yum -y update --enablerepo updates-testing ruby" )
       old_install_required_packages
     end
     
@@ -104,7 +81,6 @@ module Origin
         options.retry_failure_with_tag = false
         update
       else
-        FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
         FileUtils.rm_f "/etc/yum.repos.d/local-openshift-origin.repo"
         FileUtils.rm_rf "/tmp/tito"
         
@@ -119,22 +95,26 @@ module Origin
         
         if options.update_packages?
           puts "Updating all packages on the system..."
-          run("yum update -y --exclude='rhc*, ruby, ruby-*, qpid-*'", options)
+          run("yum update -y", options)
           puts "Done"
         end
 
         find_and_build_specs
-        
-        File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
-          out << repo_string
-        end
 
         FileUtils.rm_rf "/root/origin-rpms"
         FileUtils.mkdir_p "/root/origin-rpms"
         File.open("/etc/yum.repos.d/local-openshift-origin.repo", 'w') do |out|
-          out << local_repo_string
+          out << %{
+[openshift-origin]
+name    = openshift-origin
+baseurl = file:///root/origin-rpms
+gpgcheck= 0
+enabled = 1
+retries = 0
+          }
         end
         run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
+        run("yum clean all")
         
         packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
         package_list = "\"#{packages_to_install.join("\" \"")}\""
@@ -142,52 +122,11 @@ module Origin
 
         #mark all packages as sync'd
         get_sync_dirs
-
-        # Create the default express.conf file
-        if !File.exists?("/root/.openshift/express.conf")
-          run("mkdir -p /root/.openshift", options)
-          run("touch /root/.openshift/express.conf", options)
-          run("echo 'libra_server=localhost' > /root/.openshift/express.conf", options)
-        end
       end
     end
 
 
     no_tasks do
-
-      def local_repo_string
-        <<-EOF
-[openshift-origin]
-name    = openshift-origin
-baseurl = file:///root/origin-rpms
-gpgcheck= 0
-enabled = 1
-retries = 0
-EOF
-      end
-
-      def repo_string
-        if DISTRO_NAME == 'Fedora'
-        <<-EOF
-[openshift-origin-nightly]
-name    = openshift-origin-nightly
-baseurl = http://mirror.openshift.com/pub/origin-server/fedora-$releasever/$basearch
-gpgcheck= 0
-enabled = 1
-retries = 0
-EOF
-        else
-        <<-EOF
-[openshift-origin-nightly]
-name    = openshift-origin-nightly
-baseurl = http://mirror.openshift.com/pub/origin-server/rhel-6/$basearch
-gpgcheck= 0
-enabled = 1
-retries = 0
-EOF
-        end
-      end
-      
       def ssh_user
         return "ec2-user"
       end
@@ -440,6 +379,7 @@ EOF
         instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
 
         hostname = instance.dns_name
+        #hostname = "192.168.10.28"
         puts "Done"
         puts "Hostname: #{hostname}"
         
@@ -447,19 +387,18 @@ EOF
         begin
           if options.install_required_packages?
             puts "Starting yum update..."
-            out, ret = ssh(hostname, "su -c \"yum -y update --exclude=\\\"ruby ruby-libs ruby-rdoc ruby-irb ruby-devel ruby-qpid-* qpid-*\\\"\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
-
             print_highlighted_output("Update Output", out)
           end
-
-          puts "Installing packages required for build..."
-          out, ret = ssh(hostname, "su -c \"yum install -y git vim tito rubygems rubygem-thor rubygem-parseconfig ruby rubygem-rake rubygem-aws-sdk yum-priorities\"", 60 * 10, true, 1, ssh_user)
+          
+          out, ret = ssh(hostname, "su -c \"yum install -y git rubygem-thor\"", 60 * 10, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
           puts "Creating mount..."
           out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
+          #out, ret = ssh(hostname, "su -c \"rm -rf /data && mkdir -p /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)          
           print_and_exit(ret, out) if ret != 0
 
           init_repos(hostname, true, nil, "/data", ssh_user)
@@ -500,11 +439,6 @@ EOF
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
-          puts "Downgrading packages..."
-          out = ssh(hostname, "su -c \"yum -y downgrade ruby ruby-libs ruby-rdoc ruby-irb ruby-devel qpid-cpp-server qpid-cpp-client qpid-qmf ruby-qpid-qmf qpid-cpp-client-devel\"", 60 * 5, false, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Downgrade Output", out)
-          
           # Add the paths to the users .bashrc file
           out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
 
@@ -516,19 +450,58 @@ EOF
             out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
             print_highlighted_output("Installed Origin Packages", out)
 
-            puts "Installing SELinux policies..."
-            out, ret = ssh(hostname, "su -c \"yum install -y --skip-broken http://kojipkgs.fedoraproject.org/packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-3.10.0-94.fc16.noarch.rpm http://kojipkgs.fedoraproject.org//packages/selinux-policy/3.10.0/94.fc16/noarch/selinux-policy-targeted-3.10.0-94.fc16.noarch.rpm\"", 60 * 5, true, 1, ssh_user)
-            print_and_exit(ret, out) unless ret == 0 || out.match(/Nothing to do/)
+            puts "Setting up puppet modules..."
+            out, ret = ssh(hostname, %{su -c \"
+              rm -rf /etc/puppet/modules ;
+              mkdir -p /etc/puppet/modules ;
+              puppet module install puppetlabs/stdlib ;
+              puppet module install puppetlabs/ntp ;
+              git clone /data/puppet-openshift_origin-bare /etc/puppet/modules/openshift_origin ;
+              \"}, 60 * 20, true, 1, ssh_user)
 
             puts "Running broker setup..."
-            out, ret = ssh(hostname, "su -c /usr/sbin/oo-setup-broker", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, 'su -c "rm -rf /var/named/Kexample.com*"', 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'su -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'TSIG_KEY=`su -c "cat /var/named/Kexample.com.*.key") | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            
+            puts "Setting machine hostname"
+            out, ret = ssh(hostname, %{
+cat<<EOF > /home/ec2-user/configure_hostname.pp
+file { "update network settings - hostname": 
+  path    => "/etc/sysconfig/network",
+  content => "NETWORKING=yes\nNETWORKING_IPV6=no\nHOSTNAME=\\\${ec2_public_hostname}\n"
+}
+exec { "set hostname":
+  command => "/bin/hostname \\\${ec2_public_hostname}"
+}
+EOF
+            }, 60 * 2, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'su -c "puppet apply --debug --verbose /home/ec2-user/configure_hostname.pp"', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            
+            out, ret = ssh(hostname, %{
+cat<<EOF > /home/ec2-user/configure_origin.pp
+\\\$keyfile="/var/named/Kexample.com.*.key"
+\\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
+class { "openshift_origin" :
+  node_fqdn           => \\\$ec2_public_hostname,
+  cloud_domain        => "example.com",
+  named_tsig_priv_key => \\\$key,
+  dns_servers         => ["172.16.0.23"],
+  os_unmanaged_users  => ["ec2-user"],
+}
+EOF
+            }, 60 * 2, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            out, ret = ssh(hostname, 'su -c "puppet apply --debug --verbose /home/ec2-user/configure_origin.pp"', 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            puts "Done"
           end
-          
-          out, ret = ssh(hostname, "su -c \"cd /data && chown -R ec2-user:ec2-user .\"", 60 * 2, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          puts "Done"
-      
+
           image_id = nil
           if options[:register]
             # reset the eth0 network config to remove the HWADDR
@@ -626,7 +599,7 @@ su -c \"service named restart\"
         puts "Restarting services..."
 
         cmd = %{
-su -c \"service qpidd restart; service mcollective restart\"
+su -c \"service activemq restart; service mcollective restart\"
 su -c \"service httpd restart; service openshift-broker restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
@@ -640,7 +613,7 @@ su -c \"service httpd restart; service openshift-broker restart\"
       def restart_services()
         puts "Restarting services..."
         run("cd /var/www/openshift/broker/ ; rm -f Gemfile.lock; bundle show; cd - ;")
-        run("service qpidd restart; service mcollective restart", :verbose => true)
+        run("service qctivemq restart; service mcollective restart", :verbose => true)
         run("service httpd restart; service openshift-broker restart;", :verbose => true)
 
         puts "Sleep for 30 seconds after restarting services"
