@@ -162,6 +162,7 @@ module OpenShift
     
       # Figure out what needs to be built - exclude devenv for syncs
       sync_dirs = get_sync_dirs
+      sync_dirs = sync_dirs.sort_by{ |sync_dir| sync_dir[0] }.reverse
     
       sync_dirs.each do |sync_dir|
         package_name = sync_dir[0]
