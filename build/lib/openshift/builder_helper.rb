@@ -97,7 +97,7 @@ module OpenShift
 set -e;
 su -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
-mkdir -p /tmp/rhc/junit
+su -c \"mkdir -p /tmp/rhc/junit\"
 }, 60, false, 2, user)
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
@@ -171,6 +171,7 @@ mkdir -p /tmp/rhc/junit
       clone_commands = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dirs.each do |repo_dir|
+
           if sync_sibling_repo(repo_name, repo_dir, hostname, remote_repo_parent_dir, ssh_user)
             working_dirs += "#{repo_name} "
             clone_commands += "git clone #{repo_name}-bare #{repo_name}; "
@@ -466,17 +467,18 @@ END
 
     def reset_test_dir(hostname, backup=false, ssh_user="root")
       ssh(hostname, %{
+cat<<EOF > /tmp/reset_test_dir.sh
 if [ -d /tmp/rhc ]
 then
     if #{backup}
     then
-        if `ls /tmp/rhc/run_* > /dev/null 2>&1`
+        if \\\$(ls /tmp/rhc/run_* > /dev/null 2>&1)
         then
             rm -rf /tmp/rhc_previous_runs
             mkdir -p /tmp/rhc_previous_runs
             mv /tmp/rhc/run_* /tmp/rhc_previous_runs
         fi
-        if `ls /tmp/rhc/* > /dev/null 2>&1`
+        if \\\$(ls /tmp/rhc/* > /dev/null 2>&1)
         then
             for i in {1..100}
             do
@@ -488,7 +490,7 @@ then
                 fi
             done
         fi
-        if `ls /tmp/rhc_previous_runs/run_* > /dev/null 2>&1`
+        if \\\$(ls /tmp/rhc_previous_runs/run_* > /dev/null 2>&1)
         then
             mv /tmp/rhc_previous_runs/run_* /tmp/rhc/
             rm -rf /tmp/rhc_previous_runs
@@ -498,7 +500,10 @@ then
     fi
 fi
 mkdir -p /tmp/rhc/junit
+EOF
+chmod +x /tmp/reset_test_dir.sh
 }, 120, true, 1, ssh_user)
+      ssh(hostname, "su -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
     end
 
     def retry_test_failures(hostname, failures, num_retries=1, timeout=@@SSH_TIMEOUT, ssh_user="root")
