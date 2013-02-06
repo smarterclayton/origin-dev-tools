@@ -135,9 +135,7 @@ retries = 0
         puts "Downloading logs and screenshots..."
         `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/access_log", "rhc/log/broker/access_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/httpd/logs/error_log", "rhc/log/broker/error_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/www/openshift/broker/log/*", "rhc/log/broker", 60, ssh_user)
+        scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
         scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, ssh_user)
         scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
@@ -215,7 +213,7 @@ retries = 0
                 test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 openshift-test/tests\"", {:retry_individually => true}]
                 
                 # The broker_key initializer in controller needs to be fixed before the test below can pass
-                #test_queues[3] << ["OpenShift Origin Broker Unit Ext 1", "cd openshift-test/broker; bundle exec rake test:oo_unit_ext1", {:retry_individually => true}]
+                #test_queues[3] << ["OpenShift Origin Broker Functional Ext", "cd openshift-test/broker; bundle exec rake test:functionals_ext", {:retry_individually => true}]
               when 'runtime'
                 test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 openshift-test/tests\""]
                 test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 openshift-test/tests\""]
@@ -241,8 +239,7 @@ retries = 0
             unless options.exclude_broker?
               test_queues[0] << ["OpenShift Origin Broker Functional", "cd openshift-test/broker; su -c \"bundle exec rake test:functionals\""]
               test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; su -c \"bundle exec rake test:integration\""]
-              test_queues[1] << ["OpenShift Origin Broker Unit 1", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit1\""]
-              test_queues[1] << ["OpenShift Origin Broker Unit 2", "cd openshift-test/broker; su -c \"bundle exec rake test:oo_unit2\""]
+              test_queues[1] << ["OpenShift Origin Broker Unit", "cd openshift-test/broker; su -c \"bundle exec rake test:units\""]
               test_queues[2] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin openshift-test/tests\""]
             end
 
