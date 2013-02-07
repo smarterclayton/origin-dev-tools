@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 
 $: << File.expand_path(File.dirname(__FILE__))
-require 'lib/openshift/setup_helper'
-SetupHelper::ensure_build_requirements
+unless ENV['SKIP_SETUP']
+  require 'lib/openshift/setup_helper'
+  SetupHelper::ensure_build_requirements
+end
 
 require 'rubygems'
 require 'thor'
