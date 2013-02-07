@@ -3,7 +3,7 @@
 #
 
 # Fedora 17 image
-AMI = {"us-east-1" =>"ami-2ea50247"}
+AMI = {"us-east-1" =>"ami-6145cc08"}
 
 TYPE = "m1.large"
 KEY_PAIR = "libra"
@@ -41,14 +41,12 @@ SIBLING_REPOS_GIT_URL = {
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git',
                         'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git',
-                        'puppet-openshift_origin' => 'https://github.com/openshift/puppet-openshift_origin.git'
+                        'puppet-openshift_origin' => 'https://github.com/kraman/puppet-openshift_origin.git'
                       }
 
 DEV_TOOLS_REPO = 'origin-dev-tools'
 DEV_TOOLS_EXT_REPO = DEV_TOOLS_REPO
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO]
-
-CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@not-origin'
 
 DISTRO_NAME = `lsb_release -i`.gsub(/Distributor ID:\s*/,'').strip
 DISTRO_VERSION = `lsb_release -r`.gsub(/Release:\s*/,'').strip
@@ -62,6 +60,16 @@ if DISTRO_NAME == 'Fedora'
   ignore_packages << 'openshift-origin-util-scl' 
   ignore_packages << 'openshift-origin-cartridge-jbossas-7'
   ignore_packages << 'openshift-origin-cartridge-switchyard-0.6'
+  ignore_packages << 'openshift-origin-cartridge-perl-5.10'
+  ignore_packages << 'openshift-origin-cartridge-php-5.3'
+  ignore_packages << 'openshift-origin-cartridge-python-2.6'
+  ignore_packages << 'openshift-origin-cartridge-phpmyadmin-3.4'
+  
+  CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only'
+  BROKER_CUCUMBER_OPTIONS = '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only'
+else
+  CUCUMBER_OPTIONS = '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only'
+  BROKER_CUCUMBER_OPTIONS = '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only'
 end
 
 ignore_packages << "openshift-origin-cartridge-jbosseap-6.0" if `yum search jboss-eap6 2> /dev/null`.match(/No Matches found/)

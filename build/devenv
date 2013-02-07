@@ -54,7 +54,8 @@ module Origin
 
     def install_required_packages
       puts "Install packages required for build"
-      run "yum install -y tito make tig mlocate bash-completion ruby-devel activemq activemq-client puppet"
+      run "yum install -y https://mirror.openshift.com/pub/origin-server/fedora-18/x86_64/activemq-5.6.0-4.fc18.x86_64.rpm"
+      run "yum install -y tito make tig mlocate bash-completion ruby-devel activemq-client puppet"
       
       if DISTRO_NAME == 'Fedora'
         run "wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo"
@@ -95,7 +96,7 @@ module Origin
         
         if options.update_packages?
           puts "Updating all packages on the system..."
-          run("yum update -y", options)
+          run("yum update -y --exclude activemq", options)
           puts "Done"
         end
 
@@ -151,15 +152,15 @@ retries = 0
       def validate_instance(hostname, num_tries=1)
       end
       
-      def update_cucumber_tests(hostname, repo_parent_dir="/root", user="root")
+      def update_cucumber_tests(hostname, repo_parent_dir="/data", user="root")
         ssh(hostname, "rm -f #{repo_parent_dir}/openshift-test/tests; ln -s #{repo_parent_dir}/openshift-test/controller/test/cucumber #{repo_parent_dir}/openshift-test/tests ;", 60, false, 2, user)
       end
 
       def setup_verifier(hostname, branch)
         print "Initializing git repo for syncing..."
-        init_repos(hostname, true, nil, "~", ssh_user)
+        init_repos(hostname, true, nil, "/data", ssh_user)
         puts "Done"
-        update_remote_tests(hostname, branch, "~", ssh_user)
+        update_remote_tests(hostname, branch, "/data", ssh_user)
       end
 
       def rpm_manifest(hostname, sshuser="root")
@@ -182,17 +183,8 @@ retries = 0
         begin
           
           validate_instance(hostname, 4)
-  
-          #disable_charlie(hostname) if options.disable_charlie?
-          
           mcollective_logs(hostname) if options.mcollective_logs?
-  
-          #idle_all_gears(hostname) unless options.official?
-          
-          reset_test_dir(hostname)
-  
-          #broker_profiler(hostname) if options.profile_broker?
-  
+          reset_test_dir(hostname, false, "ec2_user")
           test_queues = [[], [], [], []]
             
           extended_tests = nil
@@ -207,53 +199,45 @@ retries = 0
             extended_tests.each do |extended_test|
               case extended_test
               when 'broker'
-                test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 openshift-test/tests\"", {:retry_individually => true}]
-                test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 openshift-test/tests\"", {:retry_individually => true}]
-                test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 openshift-test/tests\"", {:retry_individually => true}]
-                test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 openshift-test/tests\"", {:retry_individually => true}]
-                
-                # The broker_key initializer in controller needs to be fixed before the test below can pass
-                #test_queues[3] << ["OpenShift Origin Broker Functional Ext", "cd openshift-test/broker; bundle exec rake test:functionals_ext", {:retry_individually => true}]
+                test_queues[0] << ["REST API Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api1 /data/openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[1] << ["REST API Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api2 /data/openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[2] << ["REST API Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api3 /data/openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[3] << ["REST API Group 4", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @broker_api4 /data/openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[2] << ["OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; su -c \"bundle exec rake test:functionals_ext\"", {:retry_individually => true}]
               when 'runtime'
-                test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 openshift-test/tests\""]
-                test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 openshift-test/tests\""]
-                test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 openshift-test/tests\""]
-              when 'site'
-                puts "Warning: Site tests are currently not supported"
+                test_queues[0] << ["Extended Runtime Group 1", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended1 /data/openshift-test/tests\""]
+                test_queues[1] << ["Extended Runtime Group 2", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 /data/openshift-test/tests\""]
+                test_queues[2] << ["Extended Runtime Group 3", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 /data/openshift-test/tests\""]
               when 'rhc'
-                test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended openshift-test/tests\"", {:retry_individually => true}]
-                test_queues[1] << ["RHC Integration", "cd openshift-test/rhc && RHC_SERVER=localhost QUIET=1 bundle exec \"cucumber #{CUCUMBER_OPTIONS} features\"", {:retry_individually => true}]
+                test_queues[0] << ["RHC Extended", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests\"", {:retry_individually => true}]
+                test_queues[1] << ["RHC Integration", "cd /data/openshift-test/rhc && RHC_SERVER=#{hostname} QUIET=1 bundle exec \"cucumber #{CUCUMBER_OPTIONS} features\"", {:retry_individually => true}]
               else
-                puts "Not supported for extended: #{extended_test}"
-                exit 1
+                puts "No extended tests available for: #{extended_test}"
               end
             end
           elsif options.include_cucumber
             timeout = @@SSH_TIMEOUT
             timeout = @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber] if not @@SSH_TIMEOUT_OVERRIDES[options.include_cucumber].nil?
-            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} openshift-test/tests", {:timeout => timeout}]
+            test_queues[0] << [options.include_cucumber, "cucumber #{CUCUMBER_OPTIONS} -t @#{options.include_cucumber} /data/openshift-test/tests", {:timeout => timeout}]
           elsif options.include_web?
-            puts "Warning: Tests for the website are currently not supported"
+            puts "No tests available for web"
           else
-  
             unless options.exclude_broker?
-              test_queues[0] << ["OpenShift Origin Broker Functional", "cd openshift-test/broker; su -c \"bundle exec rake test:functionals\""]
-              test_queues[1] << ["OpenShift Origin Broker Integration", "cd openshift-test/broker; su -c \"bundle exec rake test:integration\""]
-              test_queues[1] << ["OpenShift Origin Broker Unit", "cd openshift-test/broker; su -c \"bundle exec rake test:units\""]
-              test_queues[2] << ["Broker Cucumber", "su -c \"cucumber --strict -f html --out /tmp/rhc/broker_cucumber.html -f progress -t @broker -t ~@not-origin openshift-test/tests\""]
+              #test_queues[1] << ["OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units"]
+              test_queues[0] << ["OpenShift Broker Integration", "cd /data/openshift-test/broker; su -c \"cp /var/www/openshift/broker/Gemfile.lock . ; bundle install --system ; bundle exec rake test:integration\""]
+              test_queues[2] << ["OpenShift Broker Functional", "cd /data/openshift-test/broker; su -c \"cp /var/www/openshift/broker/Gemfile.lock . ; bundle install --system ; bundle exec rake test:functionals\""]
+              test_queues[3] << ["Broker Cucumber", "su -c \"cucumber #{BROKER_CUCUMBER_OPTIONS} -t @broker /data/openshift-test/tests\""]
             end
 
             unless options.exclude_runtime?
-              #test_queues[3] << ["Runtime Unit", "cd openshift-test/node; su -c \"rake unit_test\""]
+              #test_queues[0] << ["Runtime Unit", "cd /data/openshift-test/node; su -c \"rake unit_test\""]
               (1..4).each do |i|
-                test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} openshift-test/tests\""]
+                test_queues[i-1] << ["Runtime Group #{i.to_s}", "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @runtime#{i.to_s} /data/openshift-test/tests\""]
               end
             end
   
-            unless options.exclude_site?
-            end
-
             unless options.exclude_rhc?
+              test_queues[0] << ["RHC Spec", "su -c \"cd /data/openshift-test/rhc ; bundle install --path=/tmp/rhc_bundle && bundle exec rake spec\""]
             end
           end
   
@@ -297,7 +281,7 @@ retries = 0
                 case extended_test
                 when 'broker'
                 when 'runtime'
-                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton openshift-test/tests\""]
+                  singleton_queue = ['Singletons', "su -c \"cucumber #{CUCUMBER_OPTIONS} -t @singleton /data/openshift-test/tests\""]
                   output, exit_code = run_ssh(hostname, singleton_queue[0], singleton_queue[1], timeout=@@SSH_TIMEOUT, ssh_user)
                   retry_test_failures(hostname, [singleton_queue], 2, timeout=@@SSH_TIMEOUT, ssh_user) if 0 != exit_code
                 when 'site'
@@ -343,24 +327,27 @@ retries = 0
         # Get the hostname from a tag lookup or assume it's SSH accessible directly
         hostname = get_host_by_name_or_tag(name, options, ssh_user)
 
-        clone_commands, working_dirs = sync_available_sibling_repos(hostname, "~", ssh_user)
-        update_remote_tests(hostname, nil, "~", ssh_user)
+        clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
+        update_remote_tests(hostname, nil, "/data", ssh_user)
         
         ret = 0
         if !options.skip_build?
           puts "Performing remote install..."
 
-          out, ret = ssh(hostname, "rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/ ; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
 
           out, ret = ssh(hostname, "su -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
           
-          out, ret = ssh(hostname, "su -c \"cd origin-dev-tools; build/devenv update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su -c \"cd /data/origin-dev-tools; build/devenv update #{options.verbose? ? '--verbose' : ''} #{options.clean_metadata? ? '--include_stale' : ''} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
 
           out, ret = ssh(hostname, "su -c \"#{options.clean_metadata? ? "yum update -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
+          
+          post_launch_setup(hostname)
+          restart_services_remote(hostname)
         end
 
         puts "Done"
@@ -373,7 +360,6 @@ retries = 0
         instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
 
         hostname = instance.dns_name
-        #hostname = "192.168.10.28"
         puts "Done"
         puts "Hostname: #{hostname}"
         
@@ -384,15 +370,18 @@ retries = 0
             out, ret = ssh(hostname, "su -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
+            out, ret = ssh(hostname, "su -c \"yum -y install https://mirror.openshift.com/pub/origin-server/fedora-18/x86_64/activemq-5.6.0-4.fc18.x86_64.rpm\"", 60 * 20, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Update Output", out)
+            
+            out, ret = ssh(hostname, "su -c \"yum install -y git rubygem-thor puppet rubygem-cucumber\"", 60 * 10, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+            print_highlighted_output("Install Output", out)
           end
-          
-          out, ret = ssh(hostname, "su -c \"yum install -y git rubygem-thor\"", 60 * 10, true, 1, ssh_user)
-          print_and_exit(ret, out) if ret != 0
-          print_highlighted_output("Install Output", out)
 
           puts "Creating mount..."
-          out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
-          #out, ret = ssh(hostname, "su -c \"rm -rf /data && mkdir -p /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)          
+          #out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su -c \"mkdir -p /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
 
           init_repos(hostname, true, nil, "/data", ssh_user)
@@ -436,33 +425,18 @@ retries = 0
           # Add the paths to the users .bashrc file
           out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
 
-          if options.install_from_source? || options.install_from_local_source?
-            puts "Installing Origin packages..."
-            out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-
-            out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
-            print_highlighted_output("Installed Origin Packages", out)
-
+          if options.install_required_packages?
             puts "Setting up puppet modules..."
             out, ret = ssh(hostname, %{su -c \"
               rm -rf /etc/puppet/modules ;
               mkdir -p /etc/puppet/modules ;
               puppet module install puppetlabs/stdlib ;
               puppet module install puppetlabs/ntp ;
-              git clone /data/puppet-openshift_origin-bare /etc/puppet/modules/openshift_origin ;
+              ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin ;
               \"}, 60 * 20, true, 1, ssh_user)
-
-            puts "Running broker setup..."
-            out, ret = ssh(hostname, 'su -c "rm -rf /var/named/Kexample.com*"', 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            out, ret = ssh(hostname, 'su -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            out, ret = ssh(hostname, 'TSIG_KEY=`su -c "cat /var/named/Kexample.com.*.key") | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
             
-            puts "Setting machine hostname"
-            out, ret = ssh(hostname, %{
+              puts "Setting machine hostname"
+              out, ret = ssh(hostname, %{
 cat<<EOF > /home/ec2-user/configure_hostname.pp
 file { "update network settings - hostname": 
   path    => "/etc/sysconfig/network",
@@ -474,9 +448,7 @@ exec { "set hostname":
 EOF
             }, 60 * 2, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
-            out, ret = ssh(hostname, 'su -c "puppet apply --debug --verbose /home/ec2-user/configure_hostname.pp"', 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            
+
             out, ret = ssh(hostname, %{
 cat<<EOF > /home/ec2-user/configure_origin.pp
 \\\$keyfile="/var/named/Kexample.com.*.key"
@@ -487,14 +459,37 @@ class { "openshift_origin" :
   named_tsig_priv_key => \\\$key,
   dns_servers         => ["172.16.0.23"],
   os_unmanaged_users  => ["ec2-user"],
+  install_repo        => "file:///root/origin-rpms",
+  development_mode    => true,
+  configure_cgroups   => false,
+
 }
 EOF
             }, 60 * 2, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
-            out, ret = ssh(hostname, 'su -c "puppet apply --debug --verbose /home/ec2-user/configure_origin.pp"', 60 * 20, true, 1, ssh_user)
-            print_and_exit(ret, out) if ret != 0
-            puts "Done"
+          else
+            if options.install_from_source? || options.install_from_local_source?
+              puts "Installing Origin packages..."
+              out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+            
+              out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
+              print_highlighted_output("Installed Origin Packages", out)
+            
+              puts "Running broker setup..."
+              out, ret = ssh(hostname, 'su -c "rm -rf /var/named/Kexample.com*"', 60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+              out, ret = ssh(hostname, 'su -c "yum install -y bind"', 60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+              out, ret = ssh(hostname, 'su -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+              out, ret = ssh(hostname, 'TSIG_KEY=`su -c "cat /var/named/Kexample.com.*.key") | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+              print_and_exit(ret, out) if ret != 0
+              
+              post_launch_setup(hostname)
+            end
           end
+          puts "Done"          
 
           image_id = nil
           if options[:register]
@@ -514,7 +509,7 @@ EOF
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            scp_remote_tests(hostname, options.branch, "~", ssh_user)
+            scp_remote_tests(hostname, options.branch, "/data", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
           puts "Done."
@@ -526,6 +521,20 @@ EOF
           end
         end
       end
+
+      def reset_eth0_dns_config(hostname)
+cmd = %{
+su -c \"echo \\\"DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+\\\" > /etc/sysconfig/network-scripts/ifcfg-eth0\"
+
+su -c \"/etc/init.d/network restart\"
+su -c \"service named restart\"
+}
+        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
+      end
   
       def sanity_check_impl(tag, hostname, instance, conn, options, image_id=nil)
         threads = []
@@ -534,9 +543,9 @@ EOF
                   "OpenShift Origin Node Unit"]
     
         cmds = ["su -c \"cd /var/www/openshift/broker; bundle exec rake test:sanity\"",
-                "cd openshift-test/node; su -c \"rake unit_test\""]
+                "cd /data/openshift-test/node; su -c \"rake unit_test\""]
         add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, false, @@SSH_TIMEOUT, ssh_user)
-        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity openshift-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
+        add_ssh_cmd_to_threads(hostname, threads, failures, "Cucumber Sanity", "cucumber #{CUCUMBER_OPTIONS} -t @sanity /data/openshift-test/tests/", false, @@SSH_TIMEOUT, ssh_user)
     
         threads.each do |t|
           t[0].join
@@ -549,44 +558,25 @@ EOF
       end
       
       def update_facts_impl(hostname)
-        # Not required since this is handled by oo-setup-broker script
       end
       
       def post_launch_setup(hostname)
         # reset the eth0 network config to add the dns entries
-        puts "Registering broker dns..."
-        cmd = %{
-su -c \"echo \\\"DEVICE=eth0
-BOOTPROTO=dhcp
-ONBOOT=yes
-DNS1=127.0.0.1
-DNS2=8.8.8.8
-DNS3=8.8.4.4
-DEFROUTE=yes
-PEERROUTES=yes\\\" > /etc/sysconfig/network-scripts/ifcfg-eth0\"
-
-su -c \"/etc/init.d/network restart\"
-su -c \"service named restart\"
-
-ext_address=`/sbin/ip addr show dev eth0 | grep inet | cut -d/ -f1 | rev | cut -d \" \" -f1 | rev`
-su -c \"/usr/sbin/oo-register-dns -h broker -n $ext_address\"
-}
-        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
+        out, ret = ssh(hostname, 'su -c "puppet apply --verbose /home/ec2-user/configure_hostname.pp"', 60 * 20, true, 1, ssh_user)
+        print_and_exit(ret, out) if ret != 0
+        
+        out, ret = ssh(hostname, 'su -c "puppet apply --verbose /home/ec2-user/configure_origin.pp"', 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
       end
 
-      def reset_eth0_dns_config(hostname)
-        # reset the eth0 network config to add the dns entries
+      def restart_services
         cmd = %{
-su -c \"echo \\\"DEVICE=eth0
-BOOTPROTO=dhcp
-ONBOOT=yes\\\" > /etc/sysconfig/network-scripts/ifcfg-eth0\"
-
-su -c \"/etc/init.d/network restart\"
-su -c \"service named restart\"
-}
-        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
-        print_and_exit(ret, out) if ret != 0
+        su -c \"service activemq restart; service mcollective restart\"
+        su -c \"service httpd restart; service openshift-broker restart\"
+        su -c \"service openshift-console restart; service openshift-node-web-proxy restart\"
+        su -c \"service named restart; service network restart\"
+        }
+        run(cmd)
       end
 
       def restart_services_remote(hostname)
@@ -595,26 +585,13 @@ su -c \"service named restart\"
         cmd = %{
 su -c \"service activemq restart; service mcollective restart\"
 su -c \"service httpd restart; service openshift-broker restart\"
+su -c \"service openshift-console restart; service openshift-node-web-proxy restart\"
+su -c \"service named restart; service network restart\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
-
-        puts "Sleep for 30 seconds after restarting services"
-        sleep 30
         puts "Done"
       end
-
-      def restart_services()
-        puts "Restarting services..."
-        run("cd /var/www/openshift/broker/ ; rm -f Gemfile.lock; bundle show; cd - ;")
-        run("service qctivemq restart; service mcollective restart", :verbose => true)
-        run("service httpd restart; service openshift-broker restart;", :verbose => true)
-
-        puts "Sleep for 30 seconds after restarting services"
-        sleep 30
-        puts "Done"
-      end
-
     end # no_tasks end
   end # class end
 end # module end
