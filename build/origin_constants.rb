@@ -48,8 +48,8 @@ DEV_TOOLS_REPO = 'origin-dev-tools'
 DEV_TOOLS_EXT_REPO = DEV_TOOLS_REPO
 ADDTL_SIBLING_REPOS = SIBLING_REPOS_GIT_URL.keys - [DEV_TOOLS_REPO]
 
-DISTRO_NAME = `lsb_release -i`.gsub(/Distributor ID:\s*/,'').strip
-DISTRO_VERSION = `lsb_release -r`.gsub(/Release:\s*/,'').strip
+DISTRO_NAME = ENV['TARGET_DISTRO_NAME'] || `lsb_release -i`.gsub(/Distributor ID:\s*/,'').strip
+DISTRO_VERSION = ENV['TARGET_DISTRO_VERSION'] || `lsb_release -r`.gsub(/Release:\s*/,'').strip
 
 ignore_packages = ['rubygem-openshift-origin-auth-kerberos', 'openshift-origin-cartridge-jbossews-1.0', 'openshift-origin-cartridge-jbossews-2.0']
 if DISTRO_NAME == 'Fedora' 

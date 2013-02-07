@@ -136,7 +136,7 @@ retries = 0
 
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
-        `rm -rf rhc/log; mkdir -p rhc/log/; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
+        `rm -rf rhc/log origin-rpms ; mkdir -p rhc/log/; mkdir -p origin-rpms; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
@@ -148,6 +148,9 @@ retries = 0
         scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, ssh_user)
         scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
         scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
+
+        ssh(hostname, "su -c \"rm -rf /tmp/origin-rpms ; mkdir -p /tmp/origin-rpms ; cp -rf /root/origin-rpms/*.rpm /tmp/origin-rpms/ ; chown ec2-user:ec2-user -R /tmp/origin-rpms\"", 60, false, 2, ssh_user)
+        scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, ssh_user)
         puts "Done"
       end
       
