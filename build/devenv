@@ -382,6 +382,10 @@ retries = 0
           end
 
           puts "Creating mount..."
+          if options.install_from_source? || options.install_from_local_source?
+            out, ret = ssh(hostname, "su -c \"rm -rf /data\"", 60 * 10, true, 1, ssh_user)
+            print_and_exit(ret, out) if ret != 0
+          end
           #out, ret = ssh(hostname, "su -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
           out, ret = ssh(hostname, "su -c \"mkdir -p /data && chown -R ec2-user:ec2-user /data/\"", 60 * 10, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
@@ -472,7 +476,7 @@ EOF
           else
             if options.install_from_source? || options.install_from_local_source?
               puts "Installing Origin packages..."
-              out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build\"", 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, "cd /data/origin-dev-tools && su -c \"build/devenv local_build --clean-packages\"", 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
             
               out = ssh(hostname, "su -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
@@ -511,7 +515,7 @@ EOF
           end
 
           unless options.skip_verify? || options.install_required_packages?
-            scp_remote_tests(hostname, options.branch, "/data", ssh_user)
+            update_remote_tests(hostname, options.branch, "/data", ssh_user)
             test_impl(name + '_' + build_num, hostname, instance, conn, options, image_id)
           end
           puts "Done."
@@ -573,10 +577,11 @@ su -c \"service named restart\"
 
       def restart_services
         cmd = %{
-        su -c \"service activemq restart; service mcollective restart\"
+        su -c \"service activemq restart; \"
         su -c \"service httpd restart; service openshift-broker restart\"
         su -c \"service openshift-console restart; service openshift-node-web-proxy restart\"
         su -c \"service named restart; service network restart\"
+        su -c \"service mcollective restart;\"
         }
         run(cmd)
       end
@@ -585,10 +590,11 @@ su -c \"service named restart\"
         puts "Restarting services..."
 
         cmd = %{
-su -c \"service activemq restart; service mcollective restart\"
+su -c \"service activemq restart\"
 su -c \"service httpd restart; service openshift-broker restart\"
 su -c \"service openshift-console restart; service openshift-node-web-proxy restart\"
 su -c \"service named restart; service network restart\"
+su -c \"service mcollective restart;\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0

@@ -41,7 +41,7 @@ SIBLING_REPOS_GIT_URL = {
                         'rhc' => 'https://github.com/openshift/rhc.git',
                         'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git',
                         'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git',
-                        'puppet-openshift_origin' => 'https://github.com/kraman/puppet-openshift_origin.git'
+                        'puppet-openshift_origin' => 'https://github.com/openshift/puppet-openshift_origin.git'
                       }
 
 DEV_TOOLS_REPO = 'origin-dev-tools'
