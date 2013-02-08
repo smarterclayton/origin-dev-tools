@@ -105,7 +105,9 @@ module Origin
         find_and_build_specs
 
         FileUtils.rm_rf "/root/origin-rpms"
+        FileUtils.rm_rf "/data/origin-srpms"
         FileUtils.mkdir_p "/root/origin-rpms"
+        FileUtils.mkdir_p "/data/origin-srpms"        
         File.open("/etc/yum.repos.d/local-openshift-origin.repo", 'w') do |out|
           out << %{
 [openshift-origin]
@@ -117,6 +119,7 @@ retries = 0
           }
         end
         run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
+        run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R ec2-user:ec2-user /data/origin-srpms", options)
         run("yum clean all")
         
         packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
@@ -136,7 +139,7 @@ retries = 0
 
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
-        `rm -rf rhc/log origin-rpms ; mkdir -p rhc/log/; mkdir -p origin-rpms; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
+        `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; mkdir -p origin-rpms; mkdir -p origin-srpms; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
         scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
@@ -151,6 +154,7 @@ retries = 0
 
         ssh(hostname, "su -c \"rm -rf /tmp/origin-rpms ; mkdir -p /tmp/origin-rpms ; cp -rf /root/origin-rpms/*.rpm /tmp/origin-rpms/ ; chown ec2-user:ec2-user -R /tmp/origin-rpms\"", 60, false, 2, ssh_user)
         scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, ssh_user)
+        scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-rpms", 300, ssh_user)        
         puts "Done"
       end
       
