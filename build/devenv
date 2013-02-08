@@ -162,9 +162,9 @@ retries = 0
       end
 
       def setup_verifier(hostname, branch)
-        print "Initializing git repo for syncing..."
-        init_repos(hostname, true, nil, "/data", ssh_user)
-        puts "Done"
+        #print "Initializing git repo for syncing..."
+        #init_repos(hostname, true, nil, "/data", ssh_user)
+        #puts "Done"
         update_remote_tests(hostname, branch, "/data", ssh_user)
       end
 
@@ -352,7 +352,6 @@ retries = 0
           print_and_exit(ret, out) if ret != 0
           
           post_launch_setup(hostname)
-          restart_services_remote(hostname)
         end
 
         puts "Done"
@@ -514,7 +513,6 @@ EOF
           # Register broker dns and restart the network
           unless options.install_required_packages?  
             post_launch_setup(hostname)
-            restart_services_remote(hostname)
           end
 
           unless options.skip_verify? || options.install_required_packages?
@@ -576,6 +574,8 @@ su -c \"service named restart\"
         
         out, ret = ssh(hostname, 'su -c "puppet apply --verbose /home/ec2-user/configure_origin.pp"', 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
+        print_highlighted_output( "Origin setup", out)
+        restart_services_remote(hostname)
       end
 
       def restart_services
