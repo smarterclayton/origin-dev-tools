@@ -321,7 +321,7 @@ retries = 0
           download_artifacts(hostname)
           
           begin
-            terminate_instance(instance) if options.terminate?
+            terminate(tag) if options.terminate?
           rescue
             # suppress termination errors - they have been logged already
           end
@@ -522,7 +522,7 @@ EOF
           puts "Done."
         ensure
           begin
-            terminate_instance(instance) if options.terminate?
+            terminate(name + '_' + build_num) if options.terminate?
           rescue
             # suppress termination errors - they have been logged already
           end
