@@ -27,7 +27,10 @@ module OpenShift
     end
     
     desc "find_and_build_specs", "Builds all non ignored specs in the current directory", :hide => true
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     def find_and_build_specs
+      def_constants(guess_os(options.base_os))
+      
       packages = get_packages(false, true).values
       buildable = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }.select do |p|
         Dir.chdir(p.dir) { system "git tag | grep '#{p.name}' 2>&1 1>/dev/null" }.tap do |r|
@@ -82,10 +85,12 @@ module OpenShift
       end
     end
 
-
     desc "install_required_packages", "Install the packages required, as specified in the spec files"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     def install_required_packages
+      def_constants(guess_os(options.base_os))
+      
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       packages = get_required_packages
       unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
@@ -94,6 +99,7 @@ module OpenShift
     end
 
     desc "build NAME BUILD_NUM", "Build a new devenv AMI with the given NAME"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :register, :type => :boolean, :desc => "Register the instance"
     method_option :terminate, :type => :boolean, :desc => "Terminate the instance on exit"
     method_option :branch, :default => "master", :desc => "Build instance off the specified branch"
@@ -117,6 +123,7 @@ module OpenShift
     method_option :extra_rpm_dir, :required => false, :dessc => "Directory containing extra rpms to be installed"
     def build(name, build_num)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      def_constants(guess_os(options.base_os))
 
       # Override the machine type to launch if necessary
       $amz_options[:instance_type] = options[:instance_type] if options[:instance_type]
@@ -154,6 +161,8 @@ module OpenShift
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :retry_failure_with_tag, :type => :boolean, :default=>true, :desc => "If a package fails to build, tag it and retry the build."
     def update
+      def_constants(guess_os())
+      
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       # Warn on uncommitted changes
       `git diff-index --quiet HEAD`
@@ -195,20 +204,26 @@ module OpenShift
     end
 
     desc "sync NAME", "Synchronize a local git repo with a remote DevEnv instance.  NAME should be ssh resolvable."
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :tag, :type => :boolean, :desc => "NAME is an Amazon tag"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :skip_build, :type => :boolean, :desc => "Indicator to skip the rpm build/install"
     method_option :clean_metadata, :type => :boolean, :desc => "Cleans metadata before running yum commands"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def sync(name)
+      def_constants(guess_os(options.base_os))
+      
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       sync_impl(name, options)
     end
 
     desc "terminate TAG", "Terminates the instance with the specified tag"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"    
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def terminate(tag)
+      def_constants(guess_os(options.base_os))
+      
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, false, ssh_user)
@@ -216,6 +231,7 @@ module OpenShift
     end
 
     desc "launch NAME", "Launches the latest DevEnv instance, tagging with NAME"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verifier, :type => :boolean, :desc => "Add verifier functionality (private IP setup and local tests)"
     method_option :branch, :default => "master", :desc => "Launch a devenv image from a particular branch"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
@@ -226,7 +242,7 @@ module OpenShift
     method_option :image_name, :required => false, :desc => "AMI ID or DEVENV name to launch"
     def launch(name)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-
+      def_constants(guess_os(options.base_os))
       ami = choose_ami_for_launch(options)
 
       # Override the machine type to launch if necessary
@@ -273,6 +289,7 @@ module OpenShift
     end
 
     desc "test TAG", "Runs the tests on a tagged instance and downloads the results"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :terminate, :type => :boolean, :desc => "Terminate the instance when finished"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :official, :type => :boolean, :desc => "For official use.  Send emails, etc."
@@ -292,7 +309,7 @@ module OpenShift
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def test(tag)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-
+      def_constants(guess_os(options.base_os))
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, ssh_user)
       hostname = instance.dns_name
@@ -301,26 +318,17 @@ module OpenShift
     end
 
     desc "sanity_check TAG", "Runs a set of sanity check tests on a tagged instance"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def sanity_check(tag)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      def_constants(guess_os(options.base_os))
 
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, ssh_user)
       hostname = instance.dns_name
 
-      sanity_check_impl(tag, hostname, instance, conn, options)
-    end
-    
-    
-    def sanity_check(tag)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-    
-      conn = connect(options.region)
-      instance = find_instance(conn, tag, true, true, ssh_user)
-      hostname = instance.dns_name
-    
       sanity_check_impl(tag, hostname, instance, conn, options)
     end
     
