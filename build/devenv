@@ -473,7 +473,7 @@ class { "openshift_origin" :
   os_unmanaged_users  => ["ec2-user"],
   install_repo        => "file:///root/origin-rpms",
   development_mode    => true,
-  configure_cgroups   => false,
+  configure_cgroups   => true,
 
 }
 EOF
