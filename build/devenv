@@ -487,6 +487,24 @@ retries = 0
 
           # Add the paths to the users .bashrc file
           #out, ret = ssh(hostname, "echo \"export PATH=/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:$PATH\" >> ~/.bashrc", 60, true, 1, ssh_user)
+          selinux_level="enforcing"
+          selinux_level="permissive" if options.disable_selinux?
+
+          out, ret = ssh(hostname, %{
+cat<<EOF > /etc/selinux/config
+This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+# enforcing - SELinux security policy is enforced.
+# permissive - SELinux prints warnings instead of enforcing.
+# disabled - No SELinux policy is loaded.
+SELINUX=#{selinux_level}
+# SELINUXTYPE= can take one of these two values:
+# targeted - Only targeted network daemons are protected.
+# strict - Full SELinux protection.
+SELINUXTYPE=targeted
+EOF
+          }, 60 * 2, true, 1, ssh_user)
+          print_and_exit(ret, out) if ret != 0
 
           if options.install_required_packages?
             puts "Setting up puppet modules..."

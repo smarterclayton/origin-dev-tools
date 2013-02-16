@@ -121,6 +121,7 @@ module OpenShift
     method_option :skip_verify, :type => :boolean, :desc => "Skip running tests to verify the build"
     method_option :instance_type, :required => false, :desc => "Amazon machine type override (default c1.medium)"
     method_option :extra_rpm_dir, :required => false, :dessc => "Directory containing extra rpms to be installed"
+    method_option :disable_selinux, :required => false, :default => false, :type => :boolean, :dessc => "Directory containing extra rpms to be installed"
     def build(name, build_num)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
