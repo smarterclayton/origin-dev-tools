@@ -491,7 +491,7 @@ retries = 0
           selinux_level="permissive" if options.disable_selinux?
 
           out, ret = ssh(hostname, %{
-cat<<EOF > /etc/selinux/config
+cat<<EOF > /tmp/selinux_config
 This file controls the state of SELinux on the system.
 # SELINUX= can take one of these three values:
 # enforcing - SELinux security policy is enforced.
@@ -505,6 +505,12 @@ SELINUXTYPE=targeted
 EOF
           }, 60 * 2, true, 1, ssh_user)
           print_and_exit(ret, out) if ret != 0
+          out, ret = ssh(hostname, "su -c \"cp /tmp/selinux_config /etc/selinux/config\"", 60 * 15, true, 1, ssh_user) if ret == 0
+          print_and_exit(ret, out) if ret != 0
+          if options.disable_selinux?
+            out, ret = ssh(hostname, "su -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 1, ssh_user) if ret == 0
+            print_and_exit(ret, out) if ret != 0
+          end
 
           if options.install_required_packages?
             puts "Setting up puppet modules..."
