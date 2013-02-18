@@ -61,6 +61,11 @@ module Origin
         run "yum erase -y activemq"
         if base_os == "fedora"
           run "yum install -y https://mirror.openshift.com/pub/origin-server/fedora-18/x86_64/activemq-5.6.0-4.fc18.x86_64.rpm"
+          run %{ yum erase -y mcollective mcollective-common mcollective-client;\
+                 yum install -y yum update -y https://mirror.openshift.com/pub/origin-server/fedora-17/x86_64/mcollective-2.2.0-2.fc17.noarch.rpm \
+                 https://mirror.openshift.com/pub/origin-server/fedora-17/x86_64/mcollective-common-2.2.0-2.fc17.noarch.rpm \
+                 https://mirror.openshift.com/pub/origin-server/fedora-17/x86_64/mcollective-client-2.2.0-2.fc17.noarch.rpm;
+              }
         elsif(base_os == "rhel" or base_os == "centos")
           run "yum install -y https://mirror.openshift.com/pub/origin-server/rhel-6/x86_64/activemq-5.6.0-1.el6_3.x86_64.rpm"
         end
