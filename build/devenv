@@ -511,10 +511,10 @@ EOF
             out, ret = ssh(hostname, "su - -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 1, ssh_user) if ret == 0
             print_and_exit(ret, out) if ret != 0
           end
+          base_os = guess_os(options.base_os)
 
           if options.install_required_packages?
             puts "Setting up puppet modules..."
-            base_os = guess_os(options.base_os)
 
             #puppet version 2.7
             out, ret = ssh(hostname, %{su - -c \"
@@ -552,8 +552,7 @@ class { "openshift_origin" :
   os_unmanaged_users  => ["#{SSH_USER}"],
   install_repo        => "file:///root/origin-rpms",
   development_mode    => true,
-  configure_cgroups   => true,
-
+  configure_cgroups   => #{base_os=='fedora'? 'false':'true'},
 }
 EOF
             }, 60 * 2, true, 1, ssh_user)
