@@ -449,8 +449,10 @@ module OpenShift
     end
     
     def tag_to_terminate(i)
-      log.info "Tagging instance to terminate #{i.id} (#{i.tags["Name"]})"
-      add_tag(i, "#{i.tags["Name"]}-will-terminate")
+      if !i.tags["Name"] || !i.tags["Name"].end_with?('-terminate')
+        log.info "Tagging instance to terminate #{i.id} (#{i.tags["Name"]})"
+        add_tag(i, "#{i.tags["Name"]}-will-terminate")
+      end
     end
   end
 end
