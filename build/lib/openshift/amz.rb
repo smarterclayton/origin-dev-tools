@@ -140,7 +140,7 @@ module OpenShift
       end
       instances.each do |i|
         if (instance_status(i) != :terminated)
-          puts "Found instance #{i.id}"
+          puts "Found instance #{i.id} (#{i.tags["Name"]})"
           block_until_available(i, ssh_user) if block_until_available
           return i
         end
@@ -150,30 +150,34 @@ module OpenShift
     end
       
     def terminate_instance(instance, handle_authdenied=false)
-      begin
-        (0..4).each do
-          instance.terminate
-          (0..12).each do
+      if !instance.api_termination_disabled?
+        begin
+          (0..4).each do
+            instance.terminate
+            (0..12).each do
+              break if instance_status(instance) == :terminated
+              log.info "Instance isn't terminated yet... waiting"
+              sleep 5
+            end
             break if instance_status(instance) == :terminated
-            log.info "Instance isn't terminated yet... waiting"
-            sleep 5
+            log.info "Instance isn't terminated yet... retrying"
           end
-          break if instance_status(instance) == :terminated
-          log.info "Instance isn't terminated yet... retrying"
-        end
-      rescue AWS::EC2::Errors::UnauthorizedOperation
-        raise unless handle_authdenied
-        log.info "You do not have permission to terminate instances."
-      ensure
-        if instance_status(instance) != :terminated
-          log.info "Failed to terminate.  Calling stop instead."
-          add_tag(instance, 'terminate')
-          begin
-            instance.stop
-          rescue Exception => e
-            log.info "Failed to stop: #{e.message}"
+        rescue AWS::EC2::Errors::UnauthorizedOperation
+          raise unless handle_authdenied
+          log.info "You do not have permission to terminate instances."
+        ensure
+          if instance_status(instance) != :terminated
+            log.info "Failed to terminate.  Calling stop instead."
+            add_tag(instance, 'terminate')
+            begin
+              instance.stop
+            rescue Exception => e
+              log.info "Failed to stop: #{e.message}"
+            end
           end
         end
+      else
+        puts "Termination protection is enabled for: #{instance.id} (#{instance.tags["Name"]})"
       end
     end
         
@@ -422,7 +426,7 @@ module OpenShift
           current_time = Time.new
           if i.tags["Name"] =~ /^QE(_|-)/i && !(i.tags["Name"] =~ /preserve/)
             if ((current_time - i.launch_time) > 57600) && (instance_status(i) == :running)
-              log.info "Stopping qe instance #{i.id}"
+              log.info "Stopping qe instance #{i.id} (#{i.tags["Name"]})"
               i.stop
             elsif ((current_time - i.launch_time) > 100800) && (instance_status(i) == :stopped)
               # Tag the node to give people a heads up
@@ -442,7 +446,7 @@ module OpenShift
             add_tag(i, 'will-terminate')
 
             # Stop the nodes to save resources
-            log.info "Stopping untagged instance #{i.id}"
+            log.info "Stopping untagged instance #{i.id} (#{i.tags["Name"]})"
             i.stop
           end
         end
