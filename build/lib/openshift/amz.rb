@@ -168,7 +168,7 @@ module OpenShift
         ensure
           if instance_status(instance) != :terminated
             log.info "Failed to terminate.  Calling stop instead."
-            add_tag(instance, 'terminate')
+            tag_to_terminate(instance)
             begin
               instance.stop
             rescue Exception => e
@@ -358,7 +358,7 @@ module OpenShift
       AWS.memoize do
         conn.instances.each do |i|
           if ((instance_status(i) == :stopped) || (instance_status(i) == :running)) && (i.tags["Name"] =~ TERMINATE_REGEX)
-            log.info "Terminating #{i.id} - #{i.tags["Name"]}"
+            log.info "Terminating #{i.id} (#{i.tags["Name"]})"
             terminate_instance(i)
           end
         end
@@ -392,7 +392,7 @@ module OpenShift
                 end
               end
               if instance_status(i) == :running || instance_status(i) == :stopped
-                log.info "Terminating verifier #{i.id} - #{i.tags["Name"]}"
+                log.info "Terminating verifier #{i.id} (#{i.tags["Name"]})"
                 terminate_instance(i)
               end
             end
@@ -411,9 +411,7 @@ module OpenShift
               yday += 365 # minor leap year bug here (will terminate 1 day late)
             end
             if yday - launch_yday > 6
-              # Tag the node to give people a heads up
-              log.info "Tagging old instances to terminate #{i.tags["Name"]}"
-              add_tag(i, 'will-terminate')
+              tag_to_terminate(i)
             end
           end
         end
@@ -429,9 +427,7 @@ module OpenShift
               log.info "Stopping qe instance #{i.id} (#{i.tags["Name"]})"
               i.stop
             elsif ((current_time - i.launch_time) > 100800) && (instance_status(i) == :stopped)
-              # Tag the node to give people a heads up
-              log.info "Tagging qe instance to terminate #{i.tags["Name"]}"
-              add_tag(i, 'will-terminate')
+              tag_to_terminate(i)
             end
           end
         end
@@ -442,8 +438,7 @@ module OpenShift
       AWS.memoize do
         conn.instances.each do |i|
           if (instance_status(i) == :running || instance_status(i) == :stopped) && (i.tags['Name'] == nil)
-            # Tag the node to give people a heads up
-            add_tag(i, 'will-terminate')
+            tag_to_terminate(i)
 
             # Stop the nodes to save resources
             log.info "Stopping untagged instance #{i.id} (#{i.tags["Name"]})"
@@ -451,6 +446,11 @@ module OpenShift
           end
         end
       end
+    end
+    
+    def tag_to_terminate(i)
+      log.info "Tagging instance to terminate #{i.id} (#{i.tags["Name"]})"
+      add_tag(i, "#{i.tags["Name"]}-will-terminate")
     end
   end
 end
