@@ -19,6 +19,38 @@ include FileUtils
 module Origin
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
+    
+    desc "docs", "Build OpenShift Origin Ruby documentation"
+    method_option :verbose, :type => :boolean, :default => false, :desc => "Enable verbose logging"
+    # Task to build YARD documentation for all Ruby Code
+    #
+    # @param options [Hash] Thor options hash
+    #   - --verbose: Enable verbose logging
+    def docs
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      repo_parent_dir = File.expand_path("#{File.dirname(__FILE__)}/../../")      
+      remove_dir "#{repo_parent_dir}/origin-docs"
+      empty_directory "#{repo_parent_dir}/origin-docs"
+      
+      unless File.exist?("/tmp/yard-js")
+        run "git clone git://github.com/lsegal/yard-js /tmp/yard-js"
+        inside("/tmp/yard-js") { run "bundle install" }
+      end
+      
+      inside(repo_parent_dir) do
+        doc_files = Dir["#{repo_parent_dir}/origin-server/documentation/*.md"].join(",")
+        inside("origin-server/documentation") { run "yardoc --markup=markdown --output-dir '#{repo_parent_dir}/origin-docs' --files #{doc_files}" }
+        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker' --private --protected --exclude test \
+          #{Dir["origin-server/broker/**/*.rb"].join(' ')} \
+          #{Dir["origin-server/controller/**/*.rb"].join(' ')}}
+        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/rest_api' --api REST \
+          #{Dir["origin-server/controller/**/*.rb"].join(' ')}}
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker_models' --private --protected --api model #{Dir["origin-server/controller/**/*.rb"].join(' ')}"
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/node' --private --protected --exclude test #{Dir["origin-server/node/**/*.rb"].join(' ')}"
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/common' --private --protected --exclude test #{Dir["origin-server/common/**/*.rb"].join(' ')}"
+        
+      end
+    end
 
     desc "build_livecd", "Build a livecd"
     def build_livecd
