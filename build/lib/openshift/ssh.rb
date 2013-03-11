@@ -8,7 +8,7 @@ module OpenShift
       log.debug "(ssh: hostname = #{hostname} timeout = #{timeout} / cmd = #{cmd})"
       output = ""
       exit_code = 1
-      ssh_cmd = "#{SSH_CMD} #{user}@#{hostname} '#{cmd} 2>&1 <&-'"
+      ssh_cmd = "#{SSH_CMD} #{user}@#{hostname} '#{cmd} 2>&1'"
       (1..num_tries).each do |i|
         begin
           log.debug(ssh_cmd)
