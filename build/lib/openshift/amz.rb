@@ -149,7 +149,7 @@ module OpenShift
       return nil
     end
       
-    def terminate_instance(instance, handle_authdenied=false)
+    def terminate_instance(instance, handle_unauthorized=false)
       if !instance.api_termination_disabled?
         begin
           (0..4).each do
@@ -163,7 +163,7 @@ module OpenShift
             log.info "Instance isn't terminated yet... retrying"
           end
         rescue AWS::EC2::Errors::UnauthorizedOperation
-          raise unless handle_authdenied
+          raise unless handle_unauthorized
           log.info "You do not have permission to terminate instances."
         ensure
           if instance_status(instance) != :terminated
@@ -255,7 +255,7 @@ module OpenShift
       end
 
       unless can_ssh?(hostname, ssh_user)
-        terminate_instance(instance)
+        terminate_instance(instance, true)
         raise ScriptError, "SSH availability timed out"
       end
 
