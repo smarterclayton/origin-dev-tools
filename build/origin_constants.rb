@@ -41,6 +41,8 @@ OPTIONS = {
       'openshift-origin-cartridge-php-5.4',
       'openshift-origin-cartridge-phpmyadmin-3.5',
       'openshift-origin-cartridge-postgresql-9.2',
+      'avahi-cname-manager',
+      'rubygem-openshift-origin-dns-avahi',
 
       'openshift-origin-cartridge-jbosseap-6.0', 
       'openshift-origin-cartridge-jbossas-7',
