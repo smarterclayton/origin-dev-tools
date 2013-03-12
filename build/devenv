@@ -217,7 +217,11 @@ retries = 0
 
       def rpm_manifest(hostname, sshuser="root")
         print "Retrieving RPM manifest.."
-        manifest = ssh(hostname, 'rpm -qa | grep -E "(rhc|openshift)" | grep -v cartridge', 60, false, 1, sshuser)
+        manifest, exit_code = ssh(hostname, 'rpm -qa | grep -E "(rhc|openshift)" | grep -v cartridge', 60, true, 1, sshuser)
+        if exit_code != 0
+          puts "Error retrieving manifest #{manifest}"
+          exit 1
+        end
         manifest = manifest.split("\n").sort.join(" / ")
         # Trim down the output to 255 characters
         manifest.gsub!(/rubygem-([a-z])/, '\1')
