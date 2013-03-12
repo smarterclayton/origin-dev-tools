@@ -21,7 +21,7 @@ module Origin
     include OpenShift::BuilderHelper
     
     desc "docs", "Build OpenShift Origin Ruby documentation"
-    method_option :verbose, :type => :boolean, :default => false, :desc => "Enable verbose logging"
+    method_option :verbose, :type => :boolean, :default => false, :desc => "Enable verbose logging"    
     # Task to build YARD documentation for all Ruby Code
     #
     # @param options [Hash] Thor options hash
@@ -52,33 +52,72 @@ module Origin
       end
     end
 
-    desc "build_livecd", "Build a livecd"
-    def build_livecd
-      basedir = "/root"
-      remix_dir = "/root/origin-server/remix"
-      remix_ks = "openshift-origin-remix.ks"  
-      
-      FileUtils.mkdir_p remix_dir
-      git_rev = `git log --pretty="format:%H %cd" -1`
-      
-      system "rm -f #{remix_dir}/#{remix_ks}"
-      ks_data = File.read("/usr/share/openshift/kickstarts/#{remix_ks}").gsub(/#ADDITIONAL REPOS/, "repo --name=local-build --baseurl=file://#{basedir}/origin-rpms\n#ADDITIONAL REPOS")
-      ks_data.gsub!(/#GIT_REV#/,git_rev)
-      
-      if File.exist?("#{basedir}/extras")
-        system "createrepo #{basedir}/extras"
-        ks_data.gsub!(/#ADDITIONAL REPOS/, "repo --name=local-extras --baseurl=file://#{basedir}/extras\n#ADDITIONAL REPOS")
-        #ks_data.gsub!(/#cartridge/,"cartridge")
+    desc "build_vm_image", "Build a VM disk image"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"    
+    method_option :terminate, :type => :boolean, :desc => "Terminate the instance when finished"    
+    # Task to build an OpenShift Origin VM image
+    #
+    # @param options [Hash] Thor options hash
+    #   - --verbose: Enable verbose logging
+    def build_vm_image
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      def_constants(guess_os("fedora"))
+
+      # Override the machine type to launch if necessary
+      $amz_options[:instance_type] = options[:instance_type] if options[:instance_type]
+      $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
+  
+      # Establish a new connection
+      conn = connect(options.region)
+  
+      image = nil
+      # Create a new builder instance
+      if (options.region?nil)
+        image = conn.images[AMI["us-east-1"]]
+      elsif AMI[options.region].nil?
+        puts "No AMI specified for region:" + options.region
+        exit 1
+      else
+        image = conn.images[AMI[options.region]]
       end
-      File.open("#{remix_dir}/#{remix_ks}", 'w') do |out|
-        out << ks_data
+
+      puts "Launching AMI: #{image.id} - #{image.name}"
+      instance = launch_instance(image, "oso-image-builder", 1, SSH_USER)
+      hostname = instance.dns_name
+      puts "Done"
+      puts "Hostname: #{hostname}"
+      ssh(hostname, 'su - -c "setenforce 0"' , 60, false, 1, SSH_USER)
+      ssh(hostname, 'su - -c "yum update -y"' , 300, false, 1, SSH_USER)
+      ssh(hostname, 'su - -c "yum install -y appliance-tools qemu-img"' , 60, false, 1, SSH_USER)
+      scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/openshift-origin.ks', 60, 5,SSH_USER)
+      scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/openshift-origin.vmx', 60, 5,SSH_USER)
+      scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vbox"), '/home/ec2-user/openshift-origin.vbox', 60, 5,SSH_USER)      
+      ssh(hostname, 'su - -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 1, SSH_USER)
+      ssh(hostname, 'su - -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 1,SSH_USER)
+      ssh(hostname, 'su - -c "which VBoxManage 2>&1 > /dev/null || yum install -y http://download.virtualbox.org/virtualbox/4.2.8/VirtualBox-4.2-4.2.8_83876_fedora18-1.x86_64.rpm"', 60, false, 1, SSH_USER)
+      ssh(hostname, 'su - -c "cd /mnt && appliance-creator -d -n openshift-origin -c openshift-origin.ks ' +
+          '--format=vmdk --vmem=1024 --checksum --logfile=build.log --tmpdir=/mnt/tmp/build --cache /mnt/tmp/cache/"', 2400, false, 1, SSH_USER)
+      ssh(hostname, 'su - -c "' + %{
+        /bin/cp -f /mnt/openshift-origin.ks /mnt/openshift-origin/ &&
+        /bin/mv -f /home/ec2-user/openshift-origin.v* /mnt/openshift-origin/ && 
+        mkdir -p /root/.VirtualBox/ &&
+        /bin/cp -f /mnt/openshift-origin/openshift-origin.vbox /root/.VirtualBox/openshift-origin.vbox &&
+        ln -sf /mnt/openshift-origin/openshift-origin-sda.vmdk /root/.VirtualBox/openshift-origin-sda.vmdk &&
+        pushd /root/.VirtualBox/ &&
+        VBoxManage registervm openshift-origin.vbox &&
+        VBoxManage  storageattach \\\"OpenShift Origin\\\" --storagectl SATA --type hdd --port 0 --medium openshift-origin-sda.vmdk &&
+        /bin/cp -f /root/.VirtualBox/openshift-origin.vbox /mnt/openshift-origin/openshift-origin.vbox && 
+        popd && 
+        cd /mnt/openshift-origin && tar zcf openshift-origin.tgz * &&
+        VBoxManage unregistervm \\\"OpenShift Origin\\\"
+      } + '"' , 2400, false, 1, SSH_USER)
+      FileUtils.mkdir_p "vm/"
+      scp_from(hostname, "/mnt/openshift-origin/openshift-origin.tgz", "vm/", 1200, SSH_USER)
+      begin
+        terminate_instance(hostname) if options.terminate?
+      rescue
+        # suppress termination errors - they have been logged already
       end
-      
-      run "/sbin/service mongod stop"
-      run "/usr/sbin/setenforce 0"
-      run "cd #{remix_dir} && livecd-creator -c openshift-origin-remix.ks -f openshift_origin --cache=cache -d -v --logfile=livecd.log"
-      run "/usr/sbin/setenforce 1"
-      run "/sbin/service mongod start"
     end
 
     no_tasks do
@@ -702,6 +741,7 @@ su - -c \"service named restart\"
 
       def restart_services
         cmd = %{
+        su - -c \"service mongod restart\"
         su - -c \"service activemq restart; \"
         su - -c \"service cgconfig restart; service cgred restart ; service openshift-cgroups restart\"
         su - -c \"service httpd restart; service openshift-broker restart\"
@@ -717,6 +757,7 @@ su - -c \"service named restart\"
         puts "Restarting services..."
 
         cmd = %{
+su - -c \"service mongod restart\"
 su - -c \"service activemq restart\"
 su - -c \"service httpd restart; service openshift-broker restart\"
 su - -c \"service openshift-console restart; service openshift-node-web-proxy stop\"
