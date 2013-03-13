@@ -333,6 +333,16 @@ module OpenShift
       sanity_check_impl(tag, hostname, instance, conn, options)
     end
     
+    desc "print_hostname", "Print the hostname of a tagged instance"
+    method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    def print_hostname(tag)
+      @@log.level = Logger::ERROR
+      conn = connect(options.region)
+      instance = find_instance(conn, tag, true, true, ssh_user, true)
+      hostname = instance.dns_name
+      print hostname
+    end
+    
     desc "clone_addtl_repos BRANCH", "Clones any additional repos not including this repo and any other repos that extend these dev tools"
     method_option :replace, :type => :boolean, :desc => "Replace the addtl repos if the already exist"
     def clone_addtl_repos(branch)
