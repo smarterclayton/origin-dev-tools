@@ -218,7 +218,7 @@ module OpenShift
           log.info "Retrying instance creation (attempt #{retries + 1})..."
 
           # Terminate the current instance since it didn't load
-          terminate_instance(instance)
+          terminate_instance(instance, true)
 
           # Launch a new instance
           instance = image.run_instance($amz_options)
