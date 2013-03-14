@@ -475,7 +475,7 @@ retries = 0
         $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
 
         puts "Launching AMI: #{image.id} - #{image.name}"
-        instance = launch_instance(image, name + "_" + build_num, 1, ssh_user)
+        instance = launch_instance(image, name + "_" + build_num, 3, ssh_user)
 
         hostname = instance.dns_name
         puts "Done"
