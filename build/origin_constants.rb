@@ -25,6 +25,11 @@ OPTIONS = {
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
+
+      'openshift-origin-cartridge-ruby18',
+      'openshift-origin-cartridge-ruby',
+      'openshift-origin-cartridge-perl',
+      'openshift-origin-cartridge-python',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
