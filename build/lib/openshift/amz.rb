@@ -205,7 +205,7 @@ module OpenShift
       instance = image.run_instance($amz_options)
 
       begin
-        add_tag(instance, name, 10)
+        add_tag(instance, name, 20)
 
         # Block until the instance is accessible
         block_until_available(instance, ssh_user, true)
@@ -236,7 +236,7 @@ module OpenShift
     def block_until_available(instance, ssh_user="root", terminate_if_unavailable=false)
       log.info "Waiting for instance to be available..."
 
-      (0..12).each do
+      (0..24).each do
         break if instance_status(instance) == :running
         log.info "Instance isn't running yet... retrying"
         sleep 5
