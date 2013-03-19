@@ -33,7 +33,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbosseap',
       'openshift-origin-cartridge-php',
     ],
-    "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss',
+    "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
   },
   "rhel"   => {
@@ -59,7 +59,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
     ],
-    "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss',
+    "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@jboss',    
   },
 }

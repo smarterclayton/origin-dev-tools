@@ -321,8 +321,8 @@ retries = 0
                 test_queues[1] << ["Extended Runtime Group 2", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 /data/openshift-test/tests")]
                 test_queues[2] << ["Extended Runtime Group 3", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 /data/openshift-test/tests")]
               when 'rhc'
-                test_queues[0] << ["RHC Extended", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests"), {:retry_individually => true}]
-                test_queues[1] << ["RHC Integration", wrap_test_command("cd /data/openshift-test/rhc && RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} features\\\""), {:retry_individually => true}]
+                test_queues[0] << ["RHC Extended", wrap_test_command("cd /data/openshift-test/rhc && bundle install --path=gems && RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests\\\""), {:retry_individually => true}]
+                test_queues[1] << ["RHC Integration", wrap_test_command("cd /data/openshift-test/rhc && bundle install --path=gems && RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} features\\\"") , {:retry_individually => true}]
               else
                 puts "No extended tests available for: #{extended_test}"
               end
@@ -336,8 +336,8 @@ retries = 0
           else
             unless options.exclude_broker?
               #test_queues[1] << ["OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units"]
-              test_queues[0] << ["OpenShift Broker Integration", wrap_test_command("cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock . ; bundle install --system ; bundle exec rake test:integration")]
-              test_queues[2] << ["OpenShift Broker Functional", wrap_test_command("cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock . ; bundle install --system ; bundle exec rake test:functionals")]
+              test_queues[0] << ["OpenShift Broker Integration", wrap_test_command("cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock . ; bundle exec rake test:integration")]
+              test_queues[2] << ["OpenShift Broker Functional", wrap_test_command("cd /data/openshift-test/broker; cp /var/www/openshift/broker/Gemfile.lock . ; bundle exec rake test:functionals")]
               test_queues[3] << ["Broker Cucumber", wrap_test_command("cucumber #{BROKER_CUCUMBER_OPTIONS} -t @broker /data/openshift-test/tests")]
             end
 
