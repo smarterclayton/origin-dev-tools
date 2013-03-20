@@ -26,6 +26,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
 
+      'openshift-origin-cartridge-diy',
       'openshift-origin-cartridge-ruby18',
       'openshift-origin-cartridge-ruby',
       'openshift-origin-cartridge-perl',
