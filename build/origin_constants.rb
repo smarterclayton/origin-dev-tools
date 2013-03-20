@@ -33,6 +33,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbosseap',
       'openshift-origin-cartridge-php',
       'openshift-origin-cartridge-jbossews',
+      'openshift-origin-cartridge-mysql',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
