@@ -59,6 +59,8 @@ OPTIONS = {
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
+
+      'openshift-origin-cartridge-jbossews',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@jboss',    
