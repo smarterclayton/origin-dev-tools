@@ -321,7 +321,7 @@ retries = 0
                 test_queues[1] << ["Extended Runtime Group 2", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended2 /data/openshift-test/tests")]
                 test_queues[2] << ["Extended Runtime Group 3", wrap_test_command("cucumber #{CUCUMBER_OPTIONS} -t @runtime_extended3 /data/openshift-test/tests")]
               when 'rhc'
-                test_queues[0] << ["RHC Extended", wrap_test_command("cd /data/openshift-test/rhc && bundle install --path=gems && RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests\\\""), {:retry_individually => true}]
+                test_queues[0] << ["RHC Extended", wrap_test_command("cd /data/openshift-test && RHC_SERVER=#{hostname} QUIET=1 cucumber #{CUCUMBER_OPTIONS} -t @rhc_extended /data/openshift-test/tests"), {:retry_individually => true}]
                 test_queues[1] << ["RHC Integration", wrap_test_command("cd /data/openshift-test/rhc && bundle install --path=gems && RHC_SERVER=#{hostname} QUIET=1 bundle exec \\\"cucumber #{CUCUMBER_OPTIONS} features\\\"") , {:retry_individually => true}]
               else
                 puts "No extended tests available for: #{extended_test}"
