@@ -281,7 +281,7 @@ retries = 0
         if BASE_OS == "fedora"
           "su - -c \"#{command}\""
         elsif(BASE_OS == "rhel" or BASE_OS == "centos")
-          "/usr/bin/scl enable ruby193 \"#{command}\""
+          "/usr/bin/scl enable ruby193 \"LANG=en_US.UTF-8 #{command}\""
         end
       end
 
