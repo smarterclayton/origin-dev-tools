@@ -92,7 +92,7 @@ module Origin
         ssh(hostname, 'su - -c "yum install -y appliance-tools qemu-img"' , 60, false, 1, SSH_USER)
         scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/', 60, 5,SSH_USER)
         scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/', 60, 5,SSH_USER)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vbox"), '/home/ec2-user/', 60, 5,SSH_USER)      
+        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ovf"), '/home/ec2-user/', 60, 5,SSH_USER)      
         ssh(hostname, 'su - -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 1, SSH_USER)
         ssh(hostname, 'su - -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 1,SSH_USER)
         ssh(hostname, 'su - -c "which VBoxManage 2>&1 > /dev/null || yum install -y http://download.virtualbox.org/virtualbox/4.2.8/VirtualBox-4.2-4.2.8_83876_fedora18-1.x86_64.rpm"', 60, false, 1, SSH_USER)
@@ -101,14 +101,7 @@ module Origin
         ssh(hostname, 'su - -c "' + %{
           /bin/cp -f /mnt/openshift-origin.ks /mnt/openshift-origin/ &&
           /bin/mv -f /home/ec2-user/openshift-origin.v* /mnt/openshift-origin/ && 
-          mkdir -p /root/.VirtualBox/ &&
-          /bin/cp -f /mnt/openshift-origin/openshift-origin.vbox /root/.VirtualBox/openshift-origin.vbox &&
-          ln -sf /mnt/openshift-origin/openshift-origin-sda.vmdk /root/.VirtualBox/openshift-origin-sda.vmdk &&
-          pushd /root/.VirtualBox/ &&
-          VBoxManage registervm openshift-origin.vbox &&
-          VBoxManage  storageattach \\\"OpenShift Origin\\\" --storagectl SATA --type hdd --port 0 --medium openshift-origin-sda.vmdk &&
-          /bin/cp -f /root/.VirtualBox/openshift-origin.vbox /mnt/openshift-origin/openshift-origin.vbox && 
-          popd && 
+          /bin/mv -f /home/ec2-user/openshift-origin.ovf /mnt/openshift-origin/ && 
           cd /mnt/openshift-origin && tar zcf openshift-origin.tgz * &&
           VBoxManage unregistervm \\\"OpenShift Origin\\\"
         } + '"' , 3600, false, 1, SSH_USER)
