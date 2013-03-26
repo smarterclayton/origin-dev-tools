@@ -40,14 +40,20 @@ module Origin
       inside(repo_parent_dir) do
         doc_files = Dir["#{repo_parent_dir}/origin-server/documentation/*.md"].join(",")
         inside("origin-server/documentation") { run "yardoc --markup=markdown --output-dir '#{repo_parent_dir}/origin-docs' --files #{doc_files}" }
-        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker' --main origin-server/documentation/broker.md --private --protected --exclude test \
+        
+        doc_files = Dir["#{repo_parent_dir}/origin-server/controller/*.md"].join(",")
+        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker' --files #{doc_files} --main origin-server/controller/README.md --private --protected --exclude test \
           #{Dir["origin-server/broker/**/*.rb"].join(' ')} \
           #{Dir["origin-server/controller/**/*.rb"].join(' ')}}
-        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/rest_api' --main origin-server/documentation/rest_api.md --api REST \
+          
+        run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/rest_api' --main origin-server/controller/README.rest_api.md --api REST \
           #{Dir["origin-server/controller/**/*.rb"].join(' ')}}
-        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker_models' --main origin-server/documentation/broker_models.md --private --protected --api model #{Dir["origin-server/controller/**/*.rb"].join(' ')}"
-        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/node' --main origin-server/documentation/node.md --private --protected --exclude test #{Dir["origin-server/node/**/*.rb"].join(' ')}"
-        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/common' --main origin-server/documentation/common.md --private --protected --exclude test #{Dir["origin-server/common/**/*.rb"].join(' ')}"
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker_models' --main origin-server/controller/README.models.md --private --protected --api model #{Dir["origin-server/controller/**/*.rb"].join(' ')}
+        
+        doc_files = Dir["#{repo_parent_dir}/origin-server/node/*.md"].join(",")
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/node' --main origin-server/node/README.md --private --protected --files #{doc_files} --exclude test #{Dir["origin-server/node/**/*.rb"].join(' ')}"
+        
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/common' --main origin-server/common/README.md --private --protected --exclude test #{Dir["origin-server/common/**/*.rb"].join(' ')}"
         run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/build-tools' --main origin-dev-tools/README.md --private --protected --exclude test #{Dir["origin-dev-tools/build/*"].join(' ')}"
       end
     end
