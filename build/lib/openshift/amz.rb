@@ -78,7 +78,7 @@ module OpenShift
     def delete_detached_volumes(conn)
       volumes = conn.volumes.filter("status", "available")
       volumes.each do |volume|
-        if volume.create_time.to_i < (Time.now.to_i - 86400)
+        if volume.create_time.to_i < (Time.now.to_i - 10800)
           puts "Deleting #{volume.size}GB detached volume: #{volume.id}"
           volume.delete
         end
@@ -88,7 +88,7 @@ module OpenShift
     def delete_unused_snapshots(conn)
       snapshots = conn.snapshots.with_owner(:self).filter("status", "completed")
       snapshots.each do |snapshot|
-        if snapshot.start_time.to_i < (Time.now.to_i - 86400)
+        if snapshot.start_time.to_i < (Time.now.to_i - 10800)
           begin
             snapshot.delete
           rescue AWS::EC2::Errors::InvalidSnapshot::InUse => e
