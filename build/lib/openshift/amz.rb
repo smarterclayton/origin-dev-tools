@@ -75,13 +75,28 @@ module OpenShift
         filter("name", filter)
     end
           
-    def get_detached_volumes(conn)
+    def delete_detached_volumes(conn)
       volumes = conn.volumes.filter("status", "available")
-      detached_volumes = []
       volumes.each do |volume|
-        detached_volumes << volume if volume.create_time.to_i < (Time.now.to_i - 86400)
+        if volume.create_time.to_i < (Time.now.to_i - 86400)
+          puts "Deleting #{volume.size}GB detached volume: #{volume.id}"
+          volume.delete
+        end
       end
-      detached_volumes
+    end
+          
+    def delete_unused_snapshots(conn)
+      snapshots = conn.snapshots.with_owner(:self).filter("status", "completed")
+      snapshots.each do |snapshot|
+        if snapshot.start_time.to_i < (Time.now.to_i - 86400)
+          begin
+            snapshot.delete
+          rescue AWS::EC2::Errors::InvalidSnapshot::InUse => e
+          else
+            puts "Deleted #{snapshot.volume_size}GB unused snapshot: #{snapshot.id}"
+          end
+        end
+      end
     end
     
     def get_specific_public_ami(conn, filter_val)
