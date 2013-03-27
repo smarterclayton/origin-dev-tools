@@ -19,9 +19,7 @@ OPTIONS = {
       'openshift-origin-cartridge-phpmyadmin-3.4',
 
       'openshift-origin-cartridge-jbosseap-6.0', 
-      'openshift-origin-cartridge-jbossas-7',
       "openshift-origin-cartridge-switchyard-0.6",
-      'openshift-origin-cartridge-jbossas-7',
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
@@ -58,7 +56,6 @@ OPTIONS = {
       'openshift-origin-cartridge-jbosseap-6.0', 
       'openshift-origin-cartridge-jbossas-7',
       "openshift-origin-cartridge-switchyard-0.6",
-      'openshift-origin-cartridge-jbossas-7',
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
