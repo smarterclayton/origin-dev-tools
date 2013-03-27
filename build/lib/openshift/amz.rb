@@ -1,6 +1,7 @@
 require 'parseconfig'
 require 'pp'
 require 'aws'
+require 'date'
 
 module OpenShift
   module Amazon
@@ -72,6 +73,15 @@ module OpenShift
       conn.images.with_owner(:self).
         filter("state", "available").
         filter("name", filter)
+    end
+          
+    def get_detached_volumes(conn)
+      volumes = conn.volumes.filter("status", "available")
+      detached_volumes = []
+      volumes.each do |volume|
+        detached_volumes << volume if volume.create_time.to_i < (Time.now.to_i - 86400)
+      end
+      detached_volumes
     end
     
     def get_specific_public_ami(conn, filter_val)
