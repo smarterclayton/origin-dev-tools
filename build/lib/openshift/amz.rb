@@ -146,6 +146,22 @@ module OpenShift
         end
       end
 
+      puts "No instance found matching #{name}"
+
+      # If we are searching by tag, then find instances with names for
+      # which the given name is a prefix, and suggest these instances.
+      matches = 0
+      if use_tag
+        instances = conn.instances.filter('tag-key', 'Name').filter('tag-value', "#{name}*")
+        instances.each do |i|
+          if (instance_status(i) != :terminated)
+            puts "Did you mean one of the following?" if matches == 0
+            puts "  #{i.tags["Name"]}"
+            matches = matches + 1
+          end
+        end
+      end
+
       return nil
     end
       
