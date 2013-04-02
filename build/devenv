@@ -652,7 +652,7 @@ EOF
               print_and_exit(ret, out) if ret != 0
               out, ret = ssh(hostname, 'su - -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'TSIG_KEY=`su - -c "cat /var/named/Kexample.com.*.key") | awk "{ print $8 }"` ; echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'TSIG_KEY=`su - -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
               print_and_exit(ret, out) if ret != 0
               
               post_launch_setup(hostname)
