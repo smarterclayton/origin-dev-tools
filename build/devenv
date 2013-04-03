@@ -48,7 +48,7 @@ module Origin
           
         run %{yardoc --output-dir '#{repo_parent_dir}/origin-docs/rest_api' --main origin-server/controller/README.rest_api.md --api REST \
           #{Dir["origin-server/controller/**/*.rb"].join(' ')}}
-        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker_models' --main origin-server/controller/README.models.md --private --protected --api model #{Dir["origin-server/controller/**/*.rb"].join(' ')}
+        run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/broker_models' --main origin-server/controller/README.models.md --private --protected --api model #{Dir["origin-server/controller/**/*.rb"].join(' ')}"
         
         doc_files = Dir["#{repo_parent_dir}/origin-server/node/*.md"].join(",")
         run "yardoc --output-dir '#{repo_parent_dir}/origin-docs/node' --main origin-server/node/README.md --private --protected --files #{doc_files} --exclude test #{Dir["origin-server/node/**/*.rb"].join(' ')}"
