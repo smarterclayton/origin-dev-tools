@@ -219,15 +219,18 @@ module OpenShift
     end
 
     desc "terminate TAG", "Terminates the instance with the specified tag"
-    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"    
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
+    method_option :download_artifacts, :type => :boolean, :desc => "Download artifacts before terminating"    
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     def terminate(tag)
       def_constants(guess_os(options.base_os))
-      
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, false, ssh_user)
+      if defined? download_artifacts && instance && (instance_status(instance) == :running)
+        download_artifacts(hostname)
+      end
       terminate_instance(instance, true) if instance
     end
 
