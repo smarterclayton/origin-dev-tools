@@ -108,7 +108,7 @@ set -e;
 su -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
 su -c \"mkdir -p /tmp/rhc/junit\"
-}, 60, false, 2, user)
+}, 60, false, 4, user)
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
