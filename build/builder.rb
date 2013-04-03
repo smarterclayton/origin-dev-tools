@@ -228,8 +228,8 @@ module OpenShift
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, false, ssh_user)
-      if defined? download_artifacts && instance && (instance_status(instance) == :running)
-        download_artifacts(hostname)
+      if (defined? download_artifacts) && instance && (instance_status(instance) == :running) && options.download_artifacts?
+        download_artifacts(instance.dns_name)
       end
       terminate_instance(instance, true) if instance
     end
