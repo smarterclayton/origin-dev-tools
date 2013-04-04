@@ -34,6 +34,8 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-mysql',
       'openshift-origin-cartridge-cron',
+      
+      'openshift-origin-cartridge-ceylon-0.5',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
@@ -61,6 +63,8 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews-2.0',
 
       'openshift-origin-cartridge-jbossews',
+        
+      'openshift-origin-cartridge-ceylon-0.5',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@jboss',    
