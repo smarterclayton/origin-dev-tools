@@ -82,7 +82,7 @@ module OpenShift
             exit 1
           end
         end
-        if build_dir =~ /\/cartridges\/openshift-origin-cartridge-(.*)/
+        if build_dir =~ /\/cartridges\/openshift-origin-cartridge-(.*)/ || build_dir =~ /\/cartridges\/(.*)/
           short_cart_name = $1
           cart_install_dir = "/usr/libexec/openshift/cartridges/v2/#{short_cart_name}"
           if File.exists? cart_install_dir
