@@ -34,6 +34,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-mysql',
       'openshift-origin-cartridge-cron',
+      'openshift-origin-cartridge-ceylon',
       
       'openshift-origin-cartridge-ceylon-0.5',
     ],
