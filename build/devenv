@@ -615,6 +615,8 @@ package { "bind":
   ensure => installed,
 }
 exec { "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com":
+  require => Package['bind'],
+  unless  => '/usr/bin/test -f /var/named/Kexample.com.*.key'
 }
 EOF
             }, 60 * 2, true, 1, ssh_user)
