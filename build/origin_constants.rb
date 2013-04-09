@@ -64,6 +64,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews-2.0',
 
       'openshift-origin-cartridge-jbossews',
+      'openshift-origin-cartridge-jbosseap',
         
       'openshift-origin-cartridge-ceylon-0.5',
     ],
