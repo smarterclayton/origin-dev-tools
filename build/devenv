@@ -611,6 +611,11 @@ file { "update network settings - hostname":
 exec { "set hostname":
   command => "/bin/hostname \\\${ec2_public_hostname}"
 }
+package { "bind":
+  ensure => installed,
+}
+exec { "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com":
+}
 EOF
             }, 60 * 2, true, 1, ssh_user)
             print_and_exit(ret, out) if ret != 0
