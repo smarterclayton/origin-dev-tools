@@ -778,7 +778,11 @@ su - -c \"service sshd restart\"
 su - -c \"rm -rf /var/www/openshift/broker/tmp/cache/*\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
-        print_and_exit(ret, out) if ret != 0
+        if ret != 0
+          print_and_exit(ret, out) 
+        else
+          print_highlighted_output( "Origin services restart", out)
+        end
         puts "Done"
       end
     end # no_tasks end
