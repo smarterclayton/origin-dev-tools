@@ -755,7 +755,8 @@ su - -c \"service named restart\"
         su - -c \"service openshift-console restart; service openshift-node-web-proxy stop\"
         su - -c \"service named restart; service network restart\"
         su - -c \"service mcollective restart;\"
-        su - -c \"service start\"
+        su - -c \"service openshift-node-web-proxy start\"
+        su - -c \"service sshd restart\"
         }
         run(cmd)
       end
@@ -772,6 +773,7 @@ su - -c \"service named restart; service network restart\"
 su - -c \"service cgconfig restart; service cgred restart ; service openshift-cgroups restart\"
 su - -c \"service mcollective restart;\"
 su - -c \"service openshift-node-web-proxy start\"
+su - -c \"service sshd start\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
