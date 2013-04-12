@@ -30,6 +30,7 @@ OPTIONS = {
       'openshift-origin-cartridge-perl',
       'openshift-origin-cartridge-python',
       'openshift-origin-cartridge-jbosseap',
+      'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-php',
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-mysql',
@@ -62,9 +63,11 @@ OPTIONS = {
       'openshift-origin-cartridge-switchyard-0.6',
       'openshift-origin-cartridge-jbossews-1.0', 
       'openshift-origin-cartridge-jbossews-2.0',
+      'openshift-origin-cartridge-jbossas',
 
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-jbosseap',
+      'openshift-origin-cartridge-ceylon',
         
       'openshift-origin-cartridge-ceylon-0.5',
     ],

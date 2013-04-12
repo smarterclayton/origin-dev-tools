@@ -93,14 +93,14 @@ module Origin
       puts "Done"
       puts "Hostname: #{hostname}"
       begin
-        ssh(hostname, 'su - -c "setenforce 0"' , 60, false, 1, SSH_USER)
-        ssh(hostname, 'su - -c "yum update -y"' , 300, false, 1, SSH_USER)
-        ssh(hostname, 'su - -c "yum install -y appliance-tools qemu-img"' , 60, false, 1, SSH_USER)
+        ssh(hostname, 'su - -c "setenforce 0"' , 60, false, 3, SSH_USER)
+        ssh(hostname, 'su - -c "yum update -y"' , 300, false, 3, SSH_USER)
+        ssh(hostname, 'su - -c "yum install -y appliance-tools qemu-img"' , 60, false, 3, SSH_USER)
         scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/', 60, 5,SSH_USER)
         scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/', 60, 5,SSH_USER)
         scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ovf"), '/home/ec2-user/', 60, 5,SSH_USER)      
-        ssh(hostname, 'su - -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 1, SSH_USER)
-        ssh(hostname, 'su - -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 1,SSH_USER)
+        ssh(hostname, 'su - -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 3, SSH_USER)
+        ssh(hostname, 'su - -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 3,SSH_USER)
         ssh(hostname, 'su - -c "cd /mnt && appliance-creator -d -n openshift-origin -c openshift-origin.ks ' +
             '--format=vmdk --vmem=1024 --checksum --logfile=build.log --tmpdir=/mnt/tmp/build --cache /mnt/tmp/cache/"', 3600, false, 1, SSH_USER)
         ssh(hostname, 'su - -c "' + %{
@@ -482,33 +482,33 @@ retries = 0
         begin
           if options.install_required_packages?
             puts "Starting yum update..."
-            out, ret = ssh(hostname, "su - -c \"yum -y update\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su - -c \"yum -y update\"", 60 * 20, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "su - -c \"yum install -y ruby ruby-irb ruby-libs ruby-devel rubygem-thor\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su - -c \"yum install -y ruby ruby-irb ruby-libs ruby-devel rubygem-thor\"", 60 * 20, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
-            out, ret = ssh(hostname, "su - -c \"yum erase -y epel-release\"", 60 * 20, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su - -c \"yum erase -y epel-release\"", 60 * 20, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Update Output", out)
             if(BASE_OS == "rhel" or BASE_OS == "centos")
-              out, ret = ssh(hostname, "su - -c \"yum -y install http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm\"", 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su - -c \"yum -y install http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm\"", 60 * 20, true, 3, ssh_user)
               print_and_exit(ret, out) if ret != 0
               print_highlighted_output("Update Output", out)
             end
             
-            out, ret = ssh(hostname, "su - -c \"yum install -y git rubygem-thor rubygem-cucumber\"", 60 * 10, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su - -c \"yum install -y git rubygem-thor rubygem-cucumber\"", 60 * 10, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Install Output", out)
           end
 
           puts "Creating mount..."
           if options.install_from_source? || options.install_from_local_source?
-            out, ret = ssh(hostname, "su - -c \"rm -rf /data\"", 60 * 10, true, 1, ssh_user)
+            out, ret = ssh(hostname, "su - -c \"rm -rf /data\"", 60 * 10, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
           end
           #out, ret = ssh(hostname, "su - -c \"umount -l /data ; if [ ! -b /dev/xvdb ]; then /sbin/mke2fs /dev/xvdb; fi; mkdir -p /data && mount /dev/xvdb /data && chown -R #{SSH_USER}:#{SSH_USER} /data/\"", 60 * 10, true, 1, ssh_user)
-          out, ret = ssh(hostname, "su - -c \"mkdir -p /data && chown -R #{SSH_USER}:#{SSH_USER} /data/\"", 60 * 10, true, 1, ssh_user)
+          out, ret = ssh(hostname, "su - -c \"mkdir -p /data && chown -R #{SSH_USER}:#{SSH_USER} /data/\"", 60 * 10, true, 3, ssh_user)
           print_and_exit(ret, out) if ret != 0
 
           init_repos(hostname, true, nil, "/data", ssh_user)
@@ -530,13 +530,13 @@ retries = 0
 
           if options[:extra_rpm_dir]
             if File.exist? options[:extra_rpm_dir]
-              out, ret = ssh(hostname, "mkdir -p /data/origin-server/build/extras", 60, true, 1, ssh_user)
+              out, ret = ssh(hostname, "mkdir -p /data/origin-server/build/extras", 60, true, 3, ssh_user)
               files = Dir.glob("#{options[:extra_rpm_dir]}/*.rpm")
               files.each do |file|
                 scp_to(hostname, file, "/data/origin-server/build/extras/", 60*10, 5, ssh_user)
               end
 
-              out, ret = ssh(hostname, "su - -c \"cd /data/origin-server/build/extras && yum install -y *.rpm\"", 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, "su - -c \"cd /data/origin-server/build/extras && yum install -y *.rpm\"", 60 * 20, true, 3, ssh_user)
             else
               puts "!!!Warning!!!"
               puts "Directory containing extra rpms not found. Skipping..."
@@ -546,7 +546,7 @@ retries = 0
           
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             puts "Install build script dependencies"
-            out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; build/devenv 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; build/devenv 2>&1 \"", 60 * 15, true, 2, ssh_user) if ret == 0
             print_highlighted_output("Build script dependencies", out)
           end
         
@@ -555,7 +555,7 @@ retries = 0
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 15, true, 3, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           
           print_highlighted_output("Install Output", out)
@@ -578,12 +578,12 @@ SELINUX=#{selinux_level}
 # strict - Full SELinux protection.
 SELINUXTYPE=targeted
 EOF
-          }, 60 * 2, true, 1, ssh_user)
+          }, 60 * 2, true, 3, ssh_user)
           print_and_exit(ret, out) if ret != 0
-          out, ret = ssh(hostname, "su - -c \"cp /tmp/selinux_config /etc/selinux/config\"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "su - -c \"cp /tmp/selinux_config /etc/selinux/config\"", 60 * 15, true, 3, ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           if options.disable_selinux?
-            out, ret = ssh(hostname, "su - -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 1, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "su - -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 3, ssh_user) if ret == 0
             print_and_exit(ret, out) if ret != 0
           end
           base_os = guess_os(options.base_os)
@@ -598,7 +598,7 @@ EOF
               puppet module install puppetlabs/stdlib &&
               puppet module install puppetlabs/ntp &&
               ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin
-              \"}, 60 * 20, true, 1, ssh_user)
+              \"}, 60 * 20, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
                         
             puts "Setting machine hostname"
@@ -619,7 +619,7 @@ exec { "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /v
   unless  => '/usr/bin/test -f /var/named/Kexample.com.*.key'
 }
 EOF
-            }, 60 * 2, true, 1, ssh_user)
+            }, 60 * 2, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
 
             out, ret = ssh(hostname, %{
@@ -637,7 +637,7 @@ class { "openshift_origin" :
   configure_cgroups   => #{base_os=='fedora'? 'false':'true'},
 }
 EOF
-            }, 60 * 2, true, 1, ssh_user)
+            }, 60 * 2, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
           else
             if options.install_from_source? || options.install_from_local_source?
@@ -646,20 +646,20 @@ EOF
               if(BASE_OS == "rhel" or BASE_OS == "centos")
                 cmd = "scl enable ruby193 \\\"#{cmd}\\\""
               end
-              out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+              out, ret = ssh(hostname, "su - -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 2, ssh_user) if ret == 0
               print_and_exit(ret, out) if ret != 0
             
-              out = ssh(hostname, "su - -c \"rpm -qa | grep openshift\"", 60, false, 1, ssh_user)
+              out = ssh(hostname, "su - -c \"rpm -qa | grep openshift\"", 60, false, 2, ssh_user)
               print_highlighted_output("Installed Origin Packages", out)
             
               puts "Running broker setup..."
-              out, ret = ssh(hostname, 'su - -c "rm -rf /var/named/Kexample.com*"', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'su - -c "rm -rf /var/named/Kexample.com*"', 60 * 20, true, 2, ssh_user)
               print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'su - -c "yum install -y bind"', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'su - -c "yum install -y bind"', 60 * 20, true, 3, ssh_user)
               print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'su - -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'su - -c "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com"', 60 * 20, true, 3, ssh_user)
               print_and_exit(ret, out) if ret != 0
-              out, ret = ssh(hostname, 'TSIG_KEY=`su - -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 1, ssh_user)
+              out, ret = ssh(hostname, 'TSIG_KEY=`su - -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 3, ssh_user)
               print_and_exit(ret, out) if ret != 0
               
               post_launch_setup(hostname)
@@ -757,6 +757,7 @@ su - -c \"service named restart\"
         su - -c \"service mcollective restart;\"
         su - -c \"service openshift-node-web-proxy start\"
         su - -c \"service sshd restart\"
+        su - -c \"rm -rf /var/www/openshift/broker/tmp/cache/*\"
         }
         run(cmd)
       end
@@ -773,7 +774,8 @@ su - -c \"service named restart; service network restart\"
 su - -c \"service cgconfig restart; service cgred restart ; service openshift-cgroups restart\"
 su - -c \"service mcollective restart;\"
 su - -c \"service openshift-node-web-proxy start\"
-su - -c \"service sshd start\"
+su - -c \"service sshd restart\"
+su - -c \"rm -rf /var/www/openshift/broker/tmp/cache/*\"
 }
         out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
