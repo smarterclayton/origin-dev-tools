@@ -213,6 +213,45 @@ retries = 0
       end
     end
 
+    desc "release_build", "Creates release packages"
+    method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
+    def release_build
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      def_constants(guess_os("fedora"))
+
+      branch = get_branch
+      orig_branches = checkout_branch(branch, options.verbose?)
+
+      #Fail if there are any uncomitted changes
+      SIBLING_REPOS.each do |repo_name, repo_dirs| 
+        repo_dirs.each do |repo_dir| 
+          if File.exists?(repo_dir) 
+            inside(repo_dir) do 
+              #raise "You have uncommited changes in #{repo_dir}, cannot bump versions" unless run('git diff --quiet')
+            end
+          end
+        end
+      end
+      
+      failed_builds = []
+      build_dirs = get_packages(false, false)
+      build_dirs.each do |package_name, build_info|
+        print package_name, build_info.pretty_inspect, "\n"
+        build_dir = build_info[0]
+        working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
+        inside(working_dir) do
+          puts "Building #{build_dir}"
+          unless run("tito build --builder mock --builder-arg mock=fedora-18-x86_64 --rpm", :verbose => options.verbose?)
+            failed_builds << build_dir 
+            puts "Build failed"
+            exit 1
+          else
+            puts "Done"
+          end
+        end
+      end
+    end
+
     desc "tag_for_release", "Tags all packages that have new commits"
     method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
     def tag_for_release
