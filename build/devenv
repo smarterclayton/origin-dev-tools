@@ -155,6 +155,7 @@ module Origin
     method_option :clean_packages, :type => :boolean, :desc => "Erase existing packages before install?"
     method_option :update_packages, :type => :boolean, :desc => "Run yum update before install?"
     method_option :incremental, :type => :boolean, :desc => "Build only the changed packages"
+    method_option :install, :type => :boolean, :default => false, :desc => "Install all packages that were built"
     def local_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -201,17 +202,118 @@ retries = 0
         run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{SSH_USER}:#{SSH_USER} /data/origin-srpms", options)
         run("yum clean all")
         
-        packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
-        package_list = "\"#{packages_to_install.join("\" \"")}\""
-        run("yum install -y #{package_list}", options)
-
-        #mark all packages as sync'd
-        get_sync_dirs
+        if options.install?
+          packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
+          package_list = "\"#{packages_to_install.join("\" \"")}\""
+          run("yum install -y #{package_list}", options)
+          
+          #mark all packages as sync'd
+          get_sync_dirs
+        end
       end
     end
 
+    desc "tag_for_release", "Tags all packages that have new commits"
+    method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
+    def tag_for_release
+      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      def_constants(guess_os("fedora"))
+
+      branch = get_branch
+      orig_branches = checkout_branch(branch, options.verbose?)
+
+      #Fail if there are any uncomitted changes
+      SIBLING_REPOS.each do |repo_name, repo_dirs| 
+        repo_dirs.each do |repo_dir| 
+          if File.exists?(repo_dir) 
+            inside(repo_dir) do 
+              raise "You have uncommited changes in #{repo_dir}, cannot bump versions" unless run('git diff --quiet')
+            end
+          end
+        end
+      end
+      
+      build_dirs = get_build_dirs
+      tag_failures = []
+      print build_dirs.pretty_inspect
+      build_dirs.each do |build_info|
+        build_dir = build_info[1]
+        working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
+        inside(working_dir) do
+          puts "Tagging #{build_dir}"
+      
+          # packages without versioning steps
+          unless run('tito tag --accept-auto-changelog')
+            puts "Failed to tag #{build_dir}"
+            tag_failures << build_dir
+          end
+      
+          puts "Done"
+        end
+      end
+      
+      tag_failures.each do |build_dir|
+        build_dirs.delete_if { | build_info | build_info[1] == build_dir }
+      end
+      
+      push_failures = ''
+      SIBLING_REPOS.each do |repo_name, repo_dirs|
+        repo_dirs.each do |repo_dir|
+          if File.exists?(repo_dir)
+            inside(repo_dir) do
+              puts "Pushing #{repo_dir}"
+              branch = get_branch
+              push_cmd = "git fetch --tags && git pull && git push origin #{branch} && git push --tags"
+              unless run(push_cmd, :verbose => options.verbose?)
+                push_failures += "pushd #{repo_dir} > /dev/null; #{push_cmd}; popd > /dev/null;\n"
+              end
+            end
+            break
+          end
+        end
+      end
+
+    end
 
     no_tasks do
+      def checkout_branch(branch="master", verbose=false)
+        puts "#######################"
+        puts "Operating on branch: #{branch}"
+        puts "#######################"
+        orig_branches = {}
+        begin
+          SIBLING_REPOS.each do |repo_name, repo_dirs|
+            repo_dirs.each do |repo_dir|
+              if File.exists?(repo_dir)
+                inside(repo_dir) do
+                  orig_branch = get_branch
+                  if orig_branch != branch
+                    orig_branches[repo_dir] = orig_branch
+                    unless run("git checkout #{branch}", :verbose => verbose)
+                      puts "Unable to checkout branch '#{branch}' for repo '#{repo_name}'"
+                      exit 1
+                    end
+                  end
+                end
+                break
+              end
+            end
+          end
+        rescue Exception => e
+          reset_orig_branches(orig_branches, verbose)
+          raise
+        end
+        orig_branches
+      end
+      
+      def reset_orig_branches(orig_branches, verbose=false)
+        orig_branches.each do |repo_dir, branch|
+          inside(repo_dir) do
+            run("git checkout #{branch}", :verbose => verbose)
+          end
+        end
+      end
+
       def ssh_user
         return SSH_USER
       end
