@@ -164,7 +164,7 @@ module Origin
         options.retry_failure_with_tag = false
         update
       else
-        FileUtils.rm_f "/etc/yum.repos.d/local-openshift-origin.repo"
+        FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
         FileUtils.rm_rf "/tmp/tito"
         
         packages = get_packages(false, true).values
@@ -188,7 +188,7 @@ module Origin
         FileUtils.rm_rf "/data/origin-srpms"
         FileUtils.mkdir_p "/root/origin-rpms"
         FileUtils.mkdir_p "/data/origin-srpms"        
-        File.open("/etc/yum.repos.d/local-openshift-origin.repo", 'w') do |out|
+        File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
           out << %{
 [openshift-origin]
 name    = openshift-origin
@@ -215,9 +215,10 @@ retries = 0
 
     desc "release_build", "Creates release packages"
     method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     def release_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-      def_constants(guess_os("fedora"))
+      def_constants(guess_os(options.base_os))
 
       branch = get_branch
       orig_branches = checkout_branch(branch, options.verbose?)
@@ -227,21 +228,26 @@ retries = 0
         repo_dirs.each do |repo_dir| 
           if File.exists?(repo_dir) 
             inside(repo_dir) do 
-              #raise "You have uncommited changes in #{repo_dir}, cannot bump versions" unless run('git diff --quiet')
+              raise "You have uncommited changes in #{repo_dir}, cannot bump versions" unless run('git diff --quiet')
             end
           end
         end
       end
-      
+     
+      FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
+      FileUtils.rm_rf "/tmp/tito"
+
       failed_builds = []
       build_dirs = get_packages(false, false)
       build_dirs.each do |package_name, build_info|
+        next if IGNORE_PACKAGES.include? package_name
         print package_name, build_info.pretty_inspect, "\n"
         build_dir = build_info[0]
         working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
         inside(working_dir) do
           puts "Building #{build_dir}"
-          unless run("tito build --builder mock --builder-arg mock=fedora-18-x86_64 --rpm", :verbose => options.verbose?)
+          #unless run("tito build --builder mock --builder-arg mock=fedora-18-x86_64 --rpm", :verbose => options.verbose?)
+          unless run("tito build --rpm", :verbose => options.verbose?)
             failed_builds << build_dir 
             puts "Build failed"
             exit 1
@@ -250,13 +256,33 @@ retries = 0
           end
         end
       end
+
+      FileUtils.rm_rf "/root/origin-rpms"
+      FileUtils.rm_rf "/data/origin-srpms"
+      FileUtils.mkdir_p "/root/origin-rpms"
+      FileUtils.mkdir_p "/data/origin-srpms"
+      File.open("/etc/yum.repos.d/openshift-origin.repo", 'w') do |out|
+          out << %{
+[openshift-origin]
+name    = openshift-origin
+baseurl = file:///root/origin-rpms
+gpgcheck= 0
+enabled = 1
+retries = 0
+          }
+        end
+      run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
+      run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{SSH_USER}:#{SSH_USER} /data/origin-srpms", options)
+      run("yum clean all")
     end
 
     desc "tag_for_release", "Tags all packages that have new commits"
+    method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
     def tag_for_release
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-      def_constants(guess_os("fedora"))
+      base_os = guess_os(options.base_os)
+      def_constants(base_os)
 
       branch = get_branch
       orig_branches = checkout_branch(branch, options.verbose?)
@@ -274,7 +300,6 @@ retries = 0
       
       build_dirs = get_build_dirs
       tag_failures = []
-      print build_dirs.pretty_inspect
       build_dirs.each do |build_info|
         build_dir = build_info[1]
         working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
