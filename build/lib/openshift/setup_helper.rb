@@ -55,7 +55,7 @@ module SetupHelper
       
       base_os = guess_os
       if(base_os == "rhel" or base_os == "centos")
-        system "yum install -y scl-utils ruby193"
+        system "yum install -y scl-utils ruby193 ruby193-rubygem-cucumber"
       end
     end
     
