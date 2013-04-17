@@ -103,12 +103,16 @@ module OpenShift
         git_archive_commands += "pushd #{repo_dir} > /dev/null; git archive --prefix openshift-test/#{::OPENSHIFT_ARCHIVE_DIR_MAP[repo_name] || ''} --format=tar #{branch ? branch : 'HEAD'} | (cd #{repo_parent_dir} && tar --warning=no-timestamp -xf -); popd > /dev/null; "
       end
 
-      ssh(hostname, %{
+      output, exit_code = ssh(hostname, %{
 set -e;
 su -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
 su -c \"mkdir -p /tmp/rhc/junit\"
-}, 60, false, 4, user)
+}, 60, true, 10, user)
+
+      if exit_code != 0
+        exit 1
+      end
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
