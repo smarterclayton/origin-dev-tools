@@ -628,7 +628,7 @@ retries = 0
           out, ret = ssh(hostname, "su - -c \"#{options.clean_metadata? ? "yum update --disablerepo='openshift-origin' -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
           
-          post_launch_setup(hostname, options)
+          post_launch_setup(hostname, options, false)
         end
 
         puts "Done"
@@ -884,9 +884,10 @@ su - -c \"service named restart\"
       def update_facts_impl(hostname)
       end
       
-      def post_launch_setup(hostname,options)
+      def post_launch_setup(hostname,options, write_puppet_manifest=true)
 	base_os = guess_os
-        out, ret = ssh(hostname, %{
+        if write_puppet_manifest
+          out, ret = ssh(hostname, %{
 cat<<EOF > ~#{SSH_USER}/configure_origin.pp
 \\\$keyfile="/var/named/Kexample.com.*.key"
 \\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
@@ -902,8 +903,9 @@ class { "openshift_origin" :
   use_v2_carts        => #{options.v2_carts?? 'true':'false'},
 }
 EOF
-       }, 60 * 2, true, 3, ssh_user)
-       print_and_exit(ret, out) if ret != 0
+          }, 60 * 2, true, 3, ssh_user)
+          print_and_exit(ret, out) if ret != 0
+        end
 
 
         # reset the eth0 network config to add the dns entries
