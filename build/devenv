@@ -628,7 +628,7 @@ retries = 0
           out, ret = ssh(hostname, "su - -c \"#{options.clean_metadata? ? "yum update --disablerepo='openshift-origin' -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
           
-          post_launch_setup(hostname)
+          post_launch_setup(hostname, options)
         end
 
         puts "Done"
@@ -788,23 +788,6 @@ EOF
             }, 60 * 2, true, 3, ssh_user)
             print_and_exit(ret, out) if ret != 0
 
-            out, ret = ssh(hostname, %{
-cat<<EOF > ~#{SSH_USER}/configure_origin.pp
-\\\$keyfile="/var/named/Kexample.com.*.key"
-\\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
-class { "openshift_origin" :
-  node_fqdn           => \\\$ec2_public_hostname,
-  cloud_domain        => "example.com",
-  named_tsig_priv_key => \\\$key,
-  dns_servers         => ["172.16.0.23"],
-  os_unmanaged_users  => ["#{SSH_USER}"],
-  install_repo        => "file:///root/origin-rpms",
-  development_mode    => true,
-  configure_cgroups   => #{base_os=='fedora'? 'false':'true'},
-}
-EOF
-            }, 60 * 2, true, 3, ssh_user)
-            print_and_exit(ret, out) if ret != 0
           else
             if options.install_from_source? || options.install_from_local_source?
               puts "Installing Origin packages..."
@@ -828,7 +811,7 @@ EOF
               out, ret = ssh(hostname, 'TSIG_KEY=`su - -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 3, ssh_user)
               print_and_exit(ret, out) if ret != 0
               
-              post_launch_setup(hostname)
+              post_launch_setup(hostname, options)
             end
           end
           puts "Done"          
@@ -846,7 +829,7 @@ EOF
 
           # Register broker dns and restart the network
           unless options.install_required_packages?  
-            post_launch_setup(hostname)
+            post_launch_setup(hostname,options)
           end
 
           unless options.skip_verify? || options.install_required_packages?
@@ -901,7 +884,28 @@ su - -c \"service named restart\"
       def update_facts_impl(hostname)
       end
       
-      def post_launch_setup(hostname)
+      def post_launch_setup(hostname,options)
+	base_os = guess_os
+        out, ret = ssh(hostname, %{
+cat<<EOF > ~#{SSH_USER}/configure_origin.pp
+\\\$keyfile="/var/named/Kexample.com.*.key"
+\\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
+class { "openshift_origin" :
+  node_fqdn           => \\\$ec2_public_hostname,
+  cloud_domain        => "example.com",
+  named_tsig_priv_key => \\\$key,
+  dns_servers         => ["172.16.0.23"],
+  os_unmanaged_users  => ["#{SSH_USER}"],
+  install_repo        => "file:///root/origin-rpms",
+  development_mode    => true,
+  configure_cgroups   => #{base_os=='fedora'? 'false':'true'},
+  use_v2_carts        => #{options.v2_carts?? 'true':'false'},
+}
+EOF
+       }, 60 * 2, true, 3, ssh_user)
+       print_and_exit(ret, out) if ret != 0
+
+
         # reset the eth0 network config to add the dns entries
         out, ret = ssh(hostname, "su - -c \"puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp\"", 60 * 20, true, 1, ssh_user)
         print_and_exit(ret, out) if ret != 0
