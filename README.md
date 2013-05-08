@@ -55,6 +55,7 @@ The tools can be invoked using [/build/devenv](https://github.com/openshift/orig
 		  [--instance-type=INSTANCE_TYPE]  # Amazon machine type override (default 'm1.large')
 		  [--region=REGION]                # Amazon region override (default us-east-1)
 		  [--image-name=IMAGE_NAME]        # AMI ID or DEVENV name to launch
+		  [--v2-carts]                     # Launch Origin AMI with v2 cartridges enabled
 
   * ./build/devenv sanity_check [TAG]
 
