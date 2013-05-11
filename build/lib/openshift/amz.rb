@@ -463,7 +463,7 @@ module OpenShift
       AWS.memoize do
         conn.instances.each do |i|
           current_time = Time.new
-          if i.tags["Name"] =~ /^QE(_|-)/i && !(i.tags["Name"] =~ /preserve/)
+          if i.tags["Name"] =~ /^S?QE(_|-)/i && !(i.tags["Name"] =~ /preserve/)
             if ((current_time - i.launch_time) > 57600) && (instance_status(i) == :running)
               log.info "Stopping qe instance #{i.id} (#{i.tags["Name"]})"
               i.stop
