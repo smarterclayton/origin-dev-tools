@@ -76,8 +76,8 @@ module SetupHelper
         puts "Unsupported ruby version #{RUBY_VERSION}. Please ensure that you are running within a ruby193 scl container\n"
         exit
       else
-        puts "Unsupported ruby version #{RUBY_VERSION}. Please ensure that you are running Ruby 1.9.3\n"
-        exit
+        #puts "Unsupported ruby version #{RUBY_VERSION}. Please ensure that you are running Ruby 1.9.3\n"
+        #exit
       end
     end
   end
@@ -87,7 +87,7 @@ module SetupHelper
     if(guess_os == "rhel" or guess_os == "centos")
       url = "https://mirror.openshift.com/pub/openshift-origin/rhel-6/$basearch/"
     elsif guess_os == "fedora"
-      url = "https://mirror.openshift.com/pub/openshift-origin/fedora-18/$basearch/"
+      url = "https://mirror.openshift.com/pub/openshift-origin/fedora-19/$basearch/"
     end
 
     unless File.exist?("/etc/yum.repos.d/openshift-origin-deps.repo")
@@ -98,22 +98,6 @@ name=openshift-origin-deps
 baseurl=#{url}
 gpgcheck=0
 enabled=1
-        }
-      end
-      
-      if(guess_os == "rhel" or guess_os == "centos")
-        url = "http://yum.puppetlabs.com/el/6/products/$basearch"
-      elsif guess_os == "fedora"
-        url = "http://yum.puppetlabs.com/fedora/f17/products/$basearch"
-      end
-      File.open("/etc/yum.repos.d/puppetlabs-products.repo","w") do |file|
-        file.write %{
-[puppetlabs-products]
-name=Puppet Labs Products Fedora 17 - $basearch
-baseurl=#{url}
-gpgkey=http://yum.puppetlabs.com/RPM-GPG-KEY-puppetlabs
-enabled=0
-gpgcheck=1
         }
       end
     end

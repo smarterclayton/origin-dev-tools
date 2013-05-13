@@ -53,7 +53,7 @@ module OpenShift
               required_packages_str += " \\\"#{r_package.yum_name_with_version}\\\"" unless packages.include?(r_package.name)
             end
           end
-          run("su -c \"yum install -y --skip-broken #{required_packages_str} 2>&1\"") unless required_packages_str.empty?
+          run("sudo bash -c \"yum install -y --skip-broken #{required_packages_str} 2>&1\"") unless required_packages_str.empty?
 
           if required_packages_str.empty? || !run("tito build --rpm --test", :verbose => options.verbose?)
             if options.retry_failure_with_tag
@@ -105,9 +105,9 @@ module OpenShift
 
       output, exit_code = ssh(hostname, %{
 set -e;
-su -c \"rm -rf #{repo_parent_dir}/openshift-test\"
+sudo bash -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
-su -c \"mkdir -p /tmp/rhc/junit\"
+sudo bash -c \"mkdir -p /tmp/rhc/junit\"
 }, 60, true, 10, user)
 
       if exit_code != 0
@@ -435,9 +435,9 @@ END
                   test = $1
                   scenario = $2
                   if retry_individ
-                    failures.push(["#{title} (#{test}:#{scenario})", "su -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}:#{scenario}\""])
+                    failures.push(["#{title} (#{test}:#{scenario})", "sudo bash -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}:#{scenario}\""])
                   else
-                    failures.push(["#{title} (#{test})", "su -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}\""])
+                    failures.push(["#{title} (#{test})", "sudo bash -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}\""])
                   end
                 end
               end
@@ -517,7 +517,7 @@ mkdir -p /tmp/rhc/junit
 EOF
 chmod +x /tmp/reset_test_dir.sh
 }, 120, true, 1, ssh_user)
-      ssh(hostname, "su -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
+      ssh(hostname, "sudo bash -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
     end
 
     def retry_test_failures(hostname, failures, num_retries=1, timeout=@@SSH_TIMEOUT, ssh_user="root")
