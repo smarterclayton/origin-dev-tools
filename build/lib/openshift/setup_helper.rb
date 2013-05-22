@@ -71,7 +71,7 @@ module SetupHelper
       end
     end
     
-    if RUBY_VERSION != "1.9.3"
+    if RUBY_VERSION.to_f < 1.9
       if(guess_os == "rhel" or guess_os == "centos")
         puts "Unsupported ruby version #{RUBY_VERSION}. Please ensure that you are running within a ruby193 scl container\n"
         exit
