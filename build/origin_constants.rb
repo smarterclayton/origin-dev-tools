@@ -30,7 +30,6 @@ OPTIONS = {
       'openshift-origin-cartridge-perl',
       'openshift-origin-cartridge-python',
       'openshift-origin-cartridge-jbosseap',
-      'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-mysql',
       'openshift-origin-cartridge-cron',
