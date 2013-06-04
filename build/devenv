@@ -60,7 +60,8 @@ module Origin
     end
 
     desc "build_vm_image", "Build a VM disk image"
-    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"    
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     method_option :terminate, :type => :boolean, :desc => "Terminate the instance when finished"    
     # Task to build an OpenShift Origin VM image
     #
@@ -89,29 +90,29 @@ module Origin
       end
 
       puts "Launching AMI: #{image.id} - #{image.name}"
-      instance = launch_instance(image, "oso-image-builder", 1, SSH_USER)
+      instance = launch_instance(image, "oso-image-builder", 1, options.ssh_user)
       hostname = instance.dns_name
       puts "Done"
       puts "Hostname: #{hostname}"
       begin
-        ssh(hostname, 'sudo bash -c "setenforce 0"' , 60, false, 3, SSH_USER)
-        ssh(hostname, 'sudo bash -c "yum update -y"' , 300, false, 3, SSH_USER)
-        ssh(hostname, 'sudo bash -c "yum install -y appliance-tools qemu-img"' , 60, false, 3, SSH_USER)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/', 60, 5,SSH_USER)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/', 60, 5,SSH_USER)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ovf"), '/home/ec2-user/', 60, 5,SSH_USER)      
-        ssh(hostname, 'sudo bash -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 3, SSH_USER)
-        ssh(hostname, 'sudo bash -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 3,SSH_USER)
+        ssh(hostname, 'sudo bash -c "setenforce 0"' , 60, false, 3, options.ssh_user)
+        ssh(hostname, 'sudo bash -c "yum update -y"' , 300, false, 3, options.ssh_user)
+        ssh(hostname, 'sudo bash -c "yum install -y appliance-tools qemu-img"' , 60, false, 3, options.ssh_user)
+        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/', 60, 5,options.ssh_user)
+        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/', 60, 5,options.ssh_user)
+        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ovf"), '/home/ec2-user/', 60, 5,options.ssh_user)
+        ssh(hostname, 'sudo bash -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 3, options.ssh_user)
+        ssh(hostname, 'sudo bash -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 3,options.ssh_user)
         ssh(hostname, 'sudo bash -c "cd /mnt && appliance-creator -d -n openshift-origin -c openshift-origin.ks ' +
-            '--format=vmdk --vmem=1024 --checksum --logfile=build.log --tmpdir=/mnt/tmp/build --cache /mnt/tmp/cache/"', 3600, false, 1, SSH_USER)
+            '--format=vmdk --vmem=1024 --checksum --logfile=build.log --tmpdir=/mnt/tmp/build --cache /mnt/tmp/cache/"', 3600, false, 1, options.ssh_user)
         ssh(hostname, 'sudo bash -c "' + %{
           /bin/cp -f /mnt/openshift-origin.ks /mnt/openshift-origin/ &&
           /bin/mv -f /home/ec2-user/openshift-origin.v* /mnt/openshift-origin/ && 
           /bin/mv -f /home/ec2-user/openshift-origin.ovf /mnt/openshift-origin/ && 
           cd /mnt/openshift-origin && tar zcf openshift-origin.tgz *
-        } + '"' , 3600, false, 1, SSH_USER)
+        } + '"' , 3600, false, 1, options.ssh_user)
         FileUtils.mkdir_p "vm/"
-        scp_from(hostname, "/mnt/openshift-origin/openshift-origin.tgz", "vm/", 1200, SSH_USER)
+        scp_from(hostname, "/mnt/openshift-origin/openshift-origin.tgz", "vm/", 1200, options.ssh_user)
       ensure
         begin
           terminate_instance(hostname) if options.terminate
@@ -133,6 +134,7 @@ module Origin
     method_option :exclude_runtime, :type => :boolean, :desc => "Exclude runtime tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def build_vm(hostname)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os("fedora-19"))
@@ -175,13 +177,14 @@ module Origin
     desc "restart_services hostname", "Restarts all services on the host"
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def restart_services(hostname=:local)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       if hostname == :local
         restart_services_local
       else
-        restart_services_remote(hostname)
+        restart_services_remote(hostname, options.ssh_user)
       end
     end
 
@@ -198,6 +201,7 @@ module Origin
     method_option :mcollective_logs, :type => :boolean, :desc=> "Don't allow mcollective logs to be deleted on rotation"
     method_option :profile_broker, :type => :boolean, :desc=> "Enable profiling code on broker"
     method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def test_vm(hostname)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -213,6 +217,7 @@ module Origin
     method_option :update_packages, :type => :boolean, :desc => "Run yum update before install?"
     method_option :incremental, :type => :boolean, :desc => "Build only the changed packages"
     method_option :install, :type => :boolean, :default => false, :desc => "Install all packages that were built"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def local_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -257,7 +262,7 @@ retries = 0
           }
         end
         run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
-        run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{SSH_USER}:#{SSH_USER} /data/origin-srpms", options)
+        run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{options.ssh_user}:#{options.ssh_user} /data/origin-srpms", options)
         run("yum clean all")
         
         if options.install?
@@ -274,6 +279,7 @@ retries = 0
     desc "release_build", "Creates release packages"
     method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def release_build
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -330,7 +336,7 @@ retries = 0
           }
         end
       run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
-      run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{SSH_USER}:#{SSH_USER} /data/origin-srpms", options)
+      run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{options.ssh_user}:#{options.ssh_user} /data/origin-srpms", options)
       run("yum clean all")
     end
 
@@ -436,10 +442,6 @@ retries = 0
         end
       end
 
-      def ssh_user
-        return SSH_USER
-      end
-
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
         `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; mkdir -p origin-rpms; mkdir -p origin-srpms; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
@@ -498,25 +500,11 @@ retries = 0
         return manifest
       end
 
-      def wrap_test_command(command, env={})
-        env_str = ""
-        unless env.nil?
-          env.each do |k,v|
-            env_str += "export #{k}=#{v}; "
-          end
-        end
-        if BASE_OS.start_with? "fedora"
-          "sudo bash -c \"runcon -t openshift_initrc_t bash -c \\\"export REGISTER_USER=1 ; #{env_str} #{command}\\\"\""
-        elsif(BASE_OS == "rhel" or BASE_OS == "centos")
-          "sudo bash -c \"/usr/bin/scl enable ruby193 \\\"export LANG=en_US.UTF-8 ; export REGISTER_USER=1; #{env_str} #{command}\\\"\""
-        end
-      end
-
       def idle_all_gears(hostname)
         puts "Idling all gears on remote instance: #{hostname}"
-        ssh(hostname, 'sudo bash -c "/sbin/service mcollective stop; /sbin/service mcollective start; /sbin/service openshift-port-proxy restart;"', 240, false, 1, SSH_USER)
-        ssh(hostname, 'for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then sudo bash -c "oo-idler -n -u `basename $dir`"; fi; done;', 240, false, 1, SSH_USER)
-        ssh(hostname, 'sudo bash -c "/sbin/service httpd graceful"', 240, false, 1, SSH_USER)
+        ssh(hostname, 'sudo bash -c "/sbin/service mcollective stop; /sbin/service mcollective start; /sbin/service openshift-port-proxy restart;"', 240, false, 1, options.ssh_user)
+        ssh(hostname, 'for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then sudo bash -c "oo-idler -n -u `basename $dir`"; fi; done;', 240, false, 1, options.ssh_user)
+        ssh(hostname, 'sudo bash -c "/sbin/service httpd graceful"', 240, false, 1, options.ssh_user)
         puts "Done"
       end
 
@@ -539,197 +527,61 @@ retries = 0
         end
       end
 
-      def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature")
-        rerun_file = "/tmp/rerun_#{SecureRandom.hex}.txt"
-        opts = []
-        opts << "--strict"
-        opts << "-f progress"
-        opts << "-f rerun --out #{rerun_file}"
-        case(BASE_OS)
-          when "rhel" || "centos" then
-            tags += ["~@fedora-18-only", "~@fedora-19-only", "~@not-rhel", "~@jboss", "~@not-origin"]
-          when "fedora-19"
-            tags += ["~@fedora-18-only", "~@rhel-only", "~@not-fedora-19", "~@jboss", "~@not-origin"]
-          when "fedora-18"
-            tags += ["~@fedora-19-only", "~@rhel-only", "~@not-fedora-18", "~@jboss", "~@not-origin"]
-        end
-        opts += tags.map{ |t| "-t #{t}"}
-        opts << "-r #{test_dir}"
-        if old_rerun_file.nil?
-          opts << "#{test_dir}/#{feature_file}"
-        else
-          opts << "@#{old_rerun_file}"
-        end
-        {:command => wrap_test_command("cucumber #{opts.join(' ')}", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env}, :title => title}
-      end
-
-      def build_rake_command(title="", cmd="", env = {}, retry_indivigually=true)
-        {:command => wrap_test_command(cmd, env), :options => {:retry_indivigually => retry_indivigually, :timeout => @@SSH_TIMEOUT, :env => env}, :title => title}
-      end
-
-      def run_tests(test_queues, hostname)
-        threads = []
-        failures = []
-
-        test_queues.each do |tqueue|
-          threads << Thread.new do
-            test_queue = tqueue
-            start_time = Time.new
-            test_queue.each do |test|
-              output, exit_code = run_ssh(hostname, test[:title], test[:command], test[:options][:timeout], SSH_USER)
-              test[:output]  = output
-              test[:exit_code]  = exit_code
-              test[:success] = exit_code == 0
-              test[:completed] = true
-
-              still_running_tests = test_queues.map do |q|
-                q.select{ |t| t[:completed] != true }
-              end
-              still_running_tests.flatten!.map!{ |t| t[:title] }
-              if still_running_tests.length > 0
-                mins, secs = (Time.new - start_time).abs.divmod(60)
-                puts "Still Running Tests (#{mins}m #{secs.to_i}s):"
-                puts still_running_tests
-                puts "\n\n\n"
-              end
-            end
-          end
-        end
-
-        threads.each { |t| t.join }
-
-        failures = test_queues.map{ |q| q.select{ |t| t[:success] == false }}
-        failures.flatten!
-        retry_queue = []
-        if failures.length > 0
-          idle_all_gears(hostname)
-          print "Failures\n"
-          print failures.map{ |f| f[:title] }.join("\n")
-          puts "\n\n\n"
-
-          #process failures
-          failures.each do |failed_test|
-            if failed_test[:options].has_key?(:cucumber_rerun_file)
-              retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir])
-            elsif failed_test[:output] =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
-              output.lines.each do |line|
-                if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
-                  test = $1
-                  scenario = $2
-                  if failed_test[:options][:retry_indivigually]
-                    retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}:#{scenario}")
-                  else
-                    retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}")
-                  end
-                end
-              end
-            elsif failed_test[:options][:retry_indivigually] && failed_test[:output].include?("Failure:") && failed_test[:output].include?("rake_test_loader")
-              found_test = false
-              failed_test[:output].lines.each do |line|
-                if line =~ /\A(test_\w+)\((\w+Test)\) \[\/.*\/(test\/.*_test\.rb):(\d+)\]:/
-                  found_test = true
-                  test_name = $1
-                  class_name = $2
-                  file_name = $3
-
-                  # determine if the first part of the command is a directory change
-                  # if so, include that in the retry command
-                  chdir_command = ""
-                  if cmd =~ /\A(cd .+?; )/
-                    chdir_command = $1
-                  end
-                  retry_queue << build_rake_command("#{class_name} (#{test_name})", "#{chdir_command} ruby -Ilib:test #{file_name} -n #{test_name}", true)
-                end
-              end
-              retry_queue << {
-                  :command  => failed_test[:command],
-                  :options  => failed_test[:options],
-                  :title    => failed_test[:title]
-              }
-            else
-              retry_queue << {
-                  :command => failed_test[:command],
-                  :options => failed_test[:options],
-                  :title   => failed_test[:title]
-              }
-            end
-          end
-        end
-        retry_queue
-      end
-
-      def create_test_users(hostname)
+      def create_test_users(hostname, ssh_user)
         #Create RHC test user
-        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u test_user@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u test_user@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
         if(exitcode != 0)
           print "Creating test user:  test_user@test.com\n"
-          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username test_user@test.com --userpass test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username test_user@test.com --userpass test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create test_user@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u test_user@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u test_user@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create test_user@test.com\n" if(exitcode != 0)
         else
           print "test_user@test.com already exists\n"
         end
 
-
-          # Create a known test user with medium-sized gears
+        # Create a known test user with medium-sized gears
         # This must be done before the deployment of application templates!
-        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_multiple_gear_sizes@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_multiple_gear_sizes@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
         if(exitcode != 0)
           print "Creating test user: user_with_multiple_gear_sizes@test.com:pass\n"
-          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_multiple_gear_sizes@test.com --userpass test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_multiple_gear_sizes@test.com --userpass test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_extra_storage@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_multiple_gear_sizes@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_multiple_gear_sizes@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_extra_storage@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_multiple_gear_sizes@test.com --addgearsize medium\"", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_multiple_gear_sizes@test.com --addgearsize medium\"", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to assign medium gear capability to user_with_multiple_gear_sizes@test.com\n" if(exitcode != 0)
         else
           print "user_with_multiple_gear_sizes@test.com already exists\n"
         end
 
         # Create a test user with additional storage capabilities
-        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
         if(exitcode != 0)
           print "Creating test user:  user_with_extra_storage@test.com\n"
-          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_extra_storage@test.com --userpass test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_extra_storage@test.com --userpass test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_extra_storage@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_extra_storage@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_extra_storage@test.com --setmaxuntrackedstorage 5 --setmaxgears 10\"", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_extra_storage@test.com --setmaxuntrackedstorage 5 --setmaxgears 10\"", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to assign additional storage to user_with_extra_storage@test.com\n" if(exitcode != 0)
         else
           print "user_with_extra_storage@test.com already exists\n"
         end
 
         # Create a test user with ssl certificates capabilities
-        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+        _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_extra_storage@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
         if(exitcode != 0)
           print "Creating test user:  user_with_certificate_capabilities@test.com\n"
-          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_certificate_capabilities@test.com --userpass test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/oo-register-user -l admin -p admin --username user_with_certificate_capabilities@test.com --userpass test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_certificate_capabilities@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_certificate_capabilities@test.com:test", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "/usr/bin/curl -f -k https://broker.example.com/broker/rest/user -u user_with_certificate_capabilities@test.com:test", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to create user_with_certificate_capabilities@test.com\n" if(exitcode != 0)
-          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_certificate_capabilities@test.com --allowprivatesslcertificates true\"", @@SSH_TIMEOUT, true, 1, SSH_USER)
+          _, exitcode = ssh(hostname, "sudo bash -c \"/usr/sbin/oo-admin-ctl-user -l user_with_certificate_capabilities@test.com --allowprivatesslcertificates true\"", @@SSH_TIMEOUT, true, 1, ssh_user)
           print "Unable to assign ssl certificates capabilities to user_with_certificate_capabilities@test.com\n" if(exitcode != 0)
         else
           print "user_with_certificate_capabilities@test.com already exists\n"
         end
-      end
-
-      def run_tests_with_retry(test_queues, hostname)
-        test_run_success = false
-        (1..3).each do |retry_cnt|
-          print "Test run ##{retry_cnt}\n\n\n"
-          failure_queue = run_tests(test_queues, hostname)
-          if failure_queue.empty?
-            test_run_success = true
-            break
-          else
-            reset_test_dir(hostname, SSH_USER)
-          end
-          test_queues = [failure_queue]
-        end
-        exit 1 unless test_run_success
       end
 
       def test_impl(tag, hostname, instance, conn, options, image_id=nil)
@@ -737,8 +589,8 @@ retries = 0
           validate_instance(hostname, 4)
           mcollective_logs(hostname) if options.mcollective_logs?
           idle_all_gears(hostname) unless options.official?
-          reset_test_dir(hostname, false, SSH_USER)
-          create_test_users(hostname)
+          reset_test_dir(hostname, false, options.ssh_user)
+          create_test_users(hostname, options.ssh_user)
 
           broker_profiler(hostname) if options.profile_broker?
 
@@ -766,7 +618,7 @@ retries = 0
                     test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}"])
                   end
                 when 'runtime_other'
-                  ssh(hostname, "mkdir -p /var/lib/openshift/.settings; touch /var/lib/openshift/.settings/v1_cartridge_format; echo 'Rails.cache.clear' | /var/www/openshift/broker/script/rails console development && service openshift-broker restart", nil, nil, nil, SSH_USER)
+                  ssh(hostname, "mkdir -p /var/lib/openshift/.settings; touch /var/lib/openshift/.settings/v1_cartridge_format; echo 'Rails.cache.clear' | /var/www/openshift/broker/script/rails console development && service openshift-broker restart", nil, nil, nil, options.ssh_user)
                   test_queues[0] << build_cucumber_command("Extended Runtime Other Group 1", ["runtime_extended_other1"])
                   test_queues[0] << build_cucumber_command("Extended Runtime Other Group 2", ["runtime_extended_other2"])
                   test_queues[0] << build_cucumber_command("Extended Runtime Other Group 3", ["runtime_extended_other3"])
@@ -813,7 +665,7 @@ retries = 0
           end
 
           begin
-            run_tests_with_retry(test_queues, hostname)
+            run_tests_with_retry(test_queues, hostname, options.ssh_user)
 
             #These are special tests that cannot be written to work concurrently
             singleton_queue = []
@@ -834,7 +686,7 @@ retries = 0
               end
             end
 
-            run_tests_with_retry([singleton_queue], hostname)
+            run_tests_with_retry([singleton_queue], hostname, options.ssh_user)
             validate_instance(hostname, 4)
           end
 
@@ -858,7 +710,7 @@ retries = 0
         queue << build_rake_command("OpenShift Origin Node Unit", "cd /data/openshift-test/node; rake unit_test")
         queue << build_cucumber_command("Cucumber Sanity", ["@sanity"])
 
-        run_tests_with_retry([queue], hostname)
+        run_tests_with_retry([queue], hostname, options.ssh_user)
       end
 
       def sync_impl(name, options)
@@ -920,18 +772,18 @@ retries = 0
         begin
           if options.install_required_packages?
             puts "Starting yum update..."
-            out, ret = ssh(hostname, "sudo bash -c \"yum -y update\"", 60 * 20, true, 3, ssh_user)
+            out, ret = ssh(hostname, "sudo bash -c \"yum -y update\"", 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Package updates", out)
-            out, ret = ssh(hostname, "sudo bash -c \"yum erase -y epel-release\"", 60 * 20, true, 3, ssh_user)
+            out, ret = ssh(hostname, "sudo bash -c \"yum erase -y epel-release\"", 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
             if(BASE_OS == "rhel" or BASE_OS == "centos")
-              out, ret = ssh(hostname, "sudo bash -c \"yum -y install http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm\"", 60 * 20, true, 3, ssh_user)
+              out, ret = ssh(hostname, "sudo bash -c \"yum -y install http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm\"", 60 * 20, true, 3, options.ssh_user)
               print_and_exit(ret, out) if ret != 0
               print_highlighted_output("Add epel repository for RHEL/CentOS", out)
             end
 
-            if BASE_OS == "rhel" or BASE_ID == "centos"
+            if BASE_OS == "rhel" or BASE_OS == "centos"
               out, ret = ssh(hostname, %{
 sudo bash -c "cat<<EOF > /etc/yum.repos.d/puppet.repo
 [puppet]
@@ -951,32 +803,32 @@ EOF"
               print_and_exit(ret, out) if ret != 0
             end
 
-            out, ret = ssh(hostname, "sudo bash -c \"yum install --skip-broken -y ruby ruby-irb ruby-libs ruby-devel rubygem-thor puppet git rubygem-cucumber\"", 60 * 20, true, 3, ssh_user)
+            out, ret = ssh(hostname, "sudo bash -c \"yum install --skip-broken -y ruby ruby-irb ruby-libs ruby-devel rubygem-thor puppet git rubygem-cucumber\"", 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
             print_highlighted_output("Ruby installation", out)
 
-            out, ret = ssh(hostname, "sudo bash -c \"yum install -y mod_passenger rubygem-passenger rubygem-passenger-devel rubygem-passenger-native rubygem-passenger-native-libs\"", 60 * 20, true, 3, ssh_user)
+            out, ret = ssh(hostname, "sudo bash -c \"yum install -y mod_passenger rubygem-passenger rubygem-passenger-devel rubygem-passenger-native rubygem-passenger-native-libs\"", 60 * 20, true, 3, options.ssh_user)
             print_highlighted_output("Installing passenger", out)
 
             if BASE_OS == "fedora-19"
               #Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955
-              out, ret = ssh(hostname, "sudo bash -c \"sed -i \'/include-dependencies/d\' /usr/share/ruby/vendor_ruby/puppet/provider/package/gem.rb\"", 60 * 10, true, 3, ssh_user)
+              out, ret = ssh(hostname, "sudo bash -c \"sed -i \'/include-dependencies/d\' /usr/share/ruby/vendor_ruby/puppet/provider/package/gem.rb\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955", out)
 
               out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/passenger-3.0.19/ext/ruby/native && " +
-                  "cp -f /usr/lib64/gems/ruby/passenger-3.0.19/lib/native/* /usr/share/gems/gems/passenger-3.0.19/ext/ruby/native/\"", 60 * 10, true, 3, ssh_user)
+                  "cp -f /usr/lib64/gems/ruby/passenger-3.0.19/lib/native/* /usr/share/gems/gems/passenger-3.0.19/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Fix passenger", out)
             end
           end
-          out, ret = ssh(hostname, "sudo bash -c \"rm -rf /data && mkdir -p /data && chown -R #{SSH_USER}:#{SSH_USER} /data/\"", 60 * 10, true, 3, ssh_user)
+          out, ret = ssh(hostname, "sudo bash -c \"rm -rf /data && mkdir -p /data && chown -R #{options.ssh_user}:#{options.ssh_user} /data/\"", 60 * 10, true, 3, options.ssh_user)
           print_and_exit(ret, out) if ret != 0
 
-          init_repos(hostname, true, nil, "/data", ssh_user)
+          init_repos(hostname, true, nil, "/data", options.ssh_user)
           clone_commands, working_dirs = '', ''
 
           if options.install_from_local_source?
             puts "Performing clean install from local source..."
-            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
+            clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", options.ssh_user)
           else
             SIBLING_REPOS.each do |repo_name, repo_dirs|
               working_dirs += "#{repo_name} "
@@ -985,19 +837,19 @@ EOF"
             end
           end
 
-          out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, ssh_user)
+          out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, options.ssh_user)
           print_and_exit(ret, out) if ret != 0
           puts "Done"
 
           puts "Install build script dependencies"
-          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; build/devenv 2>&1 \"", 60 * 15, true, 2, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; build/devenv 2>&1 \"", 60 * 15, true, 2, options.ssh_user) if ret == 0
 
           puts "Installing pre-requisite packages"
           cmd = "build/devenv install_required_packages"
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 15, true, 3, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 15, true, 3, options.ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
@@ -1019,12 +871,12 @@ SELINUX=#{selinux_level}
 # strict - Full SELinux protection.
 SELINUXTYPE=targeted
 EOF
-          }, 60 * 2, true, 3, ssh_user)
+          }, 60 * 2, true, 3, options.ssh_user)
           print_and_exit(ret, out) if ret != 0
-          out, ret = ssh(hostname, "sudo bash -c \"cp /tmp/selinux_config /etc/selinux/config\"", 60 * 15, true, 3, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "sudo bash -c \"cp /tmp/selinux_config /etc/selinux/config\"", 60 * 15, true, 3, options.ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           if options.disable_selinux?
-            out, ret = ssh(hostname, "sudo bash -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 3, ssh_user) if ret == 0
+            out, ret = ssh(hostname, "sudo bash -c \"/usr/sbin/setenforce 0\"", 60 * 15, true, 3, options.ssh_user) if ret == 0
             print_and_exit(ret, out) if ret != 0
           end
           base_os = guess_os(options.base_os)
@@ -1032,7 +884,7 @@ EOF
           if options.install_required_packages?
             puts "Setting machine hostname"
             out, ret = ssh(hostname, %{
-cat<<EOF > ~#{SSH_USER}/configure_hostname.pp
+cat<<EOF > ~#{options.ssh_user}/configure_hostname.pp
 file { "update network settings - hostname": 
   path    => "/etc/sysconfig/network",
   content => "NETWORKING=yes\nNETWORKING_IPV6=no\nHOSTNAME=broker.example.com\n"
@@ -1055,11 +907,11 @@ augeas { "hostfile":
   ],
 }
 EOF
-            }, 60 * 2, true, 3, ssh_user)
+            }, 60 * 2, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
 
             out, ret = ssh(hostname, %{
-cat<<EOF > ~#{SSH_USER}/configure_origin.pp
+cat<<EOF > ~#{options.ssh_user}/configure_origin.pp
 \\\$keyfile="/var/named/Kexample.com.*.key"
 \\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
 class { "openshift_origin" :
@@ -1067,7 +919,7 @@ class { "openshift_origin" :
   cloud_domain        => "example.com",
   named_tsig_priv_key => \\\$key,
   dns_servers         => ["#{options.upstream_dns}"],
-  os_unmanaged_users  => ["#{SSH_USER}"],
+  os_unmanaged_users  => ["#{options.ssh_user}"],
   install_repo        => "file:///root/origin-rpms",
   development_mode    => true,
   configure_cgroups   => true,
@@ -1075,7 +927,7 @@ class { "openshift_origin" :
   eth_device          => "#{options.eth_device}",
 }
 EOF
-          }, 60 * 2, true, 3, ssh_user)
+          }, 60 * 2, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
           else
             puts "Setting up puppet modules..."
@@ -1086,7 +938,7 @@ EOF
               puppet module install puppetlabs/stdlib &&
               puppet module install puppetlabs/ntp &&
               ln -sf /data/puppet-openshift_origin /etc/puppet/modules/openshift_origin
-              \"}, 60 * 20, true, 3, ssh_user)
+              \"}, 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
 
             if options.install_from_source? || options.install_from_local_source?
@@ -1095,14 +947,14 @@ EOF
               if(BASE_OS == "rhel" or BASE_OS == "centos")
                 cmd = "scl enable ruby193 \\\"#{cmd}\\\""
               end
-              out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 2, ssh_user) if ret == 0
+              out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 2, options.ssh_user) if ret == 0
               print_and_exit(ret, out) if ret != 0
 
               puts "Cleaning existing cartridges"
-              out, ret = ssh(hostname, "sudo bash -c \"rm -rf /var/lib/openshift/.cartridge_repository/*  2>&1 \"", 60 * 15, true, 2, ssh_user) if ret == 0
+              out, ret = ssh(hostname, "sudo bash -c \"rm -rf /var/lib/openshift/.cartridge_repository/*  2>&1 \"", 60 * 15, true, 2, options.ssh_user) if ret == 0
               print_and_exit(ret, out) if ret != 0
 
-              out, ret = ssh(hostname, 'TSIG_KEY=`sudo bash -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 3, ssh_user)
+              out, ret = ssh(hostname, 'TSIG_KEY=`sudo bash -c "cat /var/named/Kexample.com.*.key" | awk "{ print $8 }"` && echo $TSIG_KEY', 60 * 20, true, 3, options.ssh_user)
               print_and_exit(ret, out) if ret != 0
             end
           end
@@ -1115,14 +967,14 @@ EOF
             puts "Removing HWADDR and DNS entries from eth0 network config..."
             reset_eth0_dns_config(hostname, options)
 
-            manifest = rpm_manifest(hostname, ssh_user)              
+            manifest = rpm_manifest(hostname, options.ssh_user)
             registered_ami = register_image(conn, instance, name + '_' + build_num, manifest)
             image_id = registered_ami.id
           end
 
           if options.install_from_source? || options.install_from_local_source?
             post_launch_setup(hostname, options)
-            update_remote_tests(hostname, options.branch, "/data", ssh_user)
+            update_remote_tests(hostname, options.branch, "/data", options.ssh_user)
           end
 
           unless options.skip_verify? || options.install_required_packages?
@@ -1159,13 +1011,13 @@ sudo bash -c \"service named restart\"
       def post_launch_setup(hostname,options)
 	      base_os = guess_os
         # reset the eth0 network config to add the dns entries
-        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{SSH_USER}/configure_hostname.pp\"", 60 * 20, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_hostname.pp\"", 60 * 20, true, 1, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         
-        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{SSH_USER}/configure_origin.pp\"", 60 * 20, true, 1, ssh_user)
+        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_origin.pp\"", 60 * 20, true, 1, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         print_highlighted_output( "Origin setup", out)
-        restart_services_remote(hostname)
+        restart_services_remote(hostname, options.ssh_user)
       end
 
       def restart_services_commands
@@ -1189,7 +1041,7 @@ sudo bash -c \"service named restart\"
         run(restart_services_commands.join("\n"),options)
       end
 
-      def restart_services_remote(hostname)
+      def restart_services_remote(hostname, ssh_user)
         puts "Restarting services..."
         out, ret = ssh(hostname, restart_services_commands.join("\n"), 60 * 5, true, 1, ssh_user)
         if ret != 0

@@ -415,70 +415,6 @@ END
       puts "Done"
     end
 
-    def add_ssh_cmd_to_threads(hostname, threads, failures, titles, cmds, retry_individually=false, timeouts=@@SSH_TIMEOUT, ssh_user="root")
-      titles = [titles] unless titles.kind_of?(Array)
-      cmds = [cmds] unless cmds.kind_of?(Array)
-      retry_individually = [retry_individually] unless retry_individually.kind_of? Array
-      timeouts = [timeouts] unless timeouts.kind_of? Array
-      start_time = Time.new
-      threads << [ Thread.new {
-        multi = cmds.length > 1
-        cmds.each_with_index do |cmd, index|
-          title = titles[index]
-          retry_individ = retry_individually[index]
-          timeout = timeouts[index]
-          output, exit_code = run_ssh(hostname, title, cmd, timeout, ssh_user)
-          if exit_code != 0
-            if output.include?("Failing Scenarios:") && output =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
-              output.lines.each do |line|
-                if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
-                  test = $1
-                  scenario = $2
-                  if retry_individ
-                    failures.push(["#{title} (#{test}:#{scenario})", "sudo bash -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}:#{scenario}\""])
-                  else
-                    failures.push(["#{title} (#{test})", "sudo bash -c \"cucumber #{CUCUMBER_OPTIONS} openshift-test/tests/#{test}\""])
-                  end
-                end
-              end
-            elsif retry_individ && output.include?("Failure:") && output.include?("rake_test_loader")
-              found_test = false
-              output.lines.each do |line|
-                if line =~ /\A(test_\w+)\((\w+Test)\) \[\/.*\/(test\/.*_test\.rb):(\d+)\]:/
-                  found_test = true
-                  test_name = $1
-                  class_name = $2
-                  file_name = $3
-
-                  # determine if the first part of the command is a directory change
-                  # if so, include that in the retry command
-                  chdir_command = ""
-                  if cmd =~ /\A(cd .+?; )/
-                    chdir_command = $1
-                  end
-                  failures.push(["#{class_name} (#{test_name})", "#{chdir_command} ruby -Ilib:test #{file_name} -n #{test_name}"])
-                end
-              end
-              failures.push([title, cmd]) unless found_test
-            else
-              failures.push([title, cmd])
-            end
-          end
-
-          still_running_tests = ''
-          threads.each do |t|
-            t[1].delete(title)
-            still_running_tests += "   #{t[1].pretty_inspect}" unless t[1].empty?
-          end
-          if still_running_tests.length > 0
-            mins, secs = (Time.new - start_time).abs.divmod(60)
-            puts "Still Running Tests (#{mins}m #{secs.to_i}s):"
-            puts still_running_tests
-          end
-        end
-      }, Array.new(titles) ]
-    end
-
     def reset_test_dir(hostname, backup=false, ssh_user="root")
       ssh(hostname, %{
 cat<<EOF > /tmp/reset_test_dir.sh
@@ -519,29 +455,6 @@ chmod +x /tmp/reset_test_dir.sh
 }, 120, true, 1, ssh_user)
       ssh(hostname, "sudo bash -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
     end
-
-    def retry_test_failures(hostname, failures, num_retries=1, timeout=@@SSH_TIMEOUT, ssh_user="root")
-      failures.reverse!
-      puts "All Failures: #{failures.pretty_inspect}"
-      reset_test_dir(hostname, true, ssh_user)
-      failures.each do |failure|
-        title = failure[0]
-        cmd = failure[1]
-        (1..num_retries).each do |i|
-          puts "Retry attempt #{i} for: #{title}"
-          output, exit_code = run_ssh(hostname, title, cmd, timeout, ssh_user)
-          if exit_code != 0
-            if i == num_retries
-              exit exit_code
-            else
-              reset_test_dir(hostname, true, ssh_user)
-            end
-          else
-            break
-          end
-        end
-      end
-    end
     
     def devenv_branch_wildcard(branch)
       wildcard = nil
@@ -579,5 +492,153 @@ chmod +x /tmp/reset_test_dir.sh
       end
     end
 
+    def run_tests_with_retry(test_queues, hostname, ssh_user="root")
+      test_run_success = false
+      (1..3).each do |retry_cnt|
+        print "Test run ##{retry_cnt}\n\n\n"
+        failure_queue = run_tests(test_queues, hostname, ssh_user)
+        if failure_queue.empty?
+          test_run_success = true
+          break
+        else
+          reset_test_dir(hostname, false, ssh_user)
+        end
+        test_queues = [failure_queue]
+      end
+      exit 1 unless test_run_success
+    end
+
+    def run_tests(test_queues, hostname, ssh_user)
+      threads = []
+      failures = []
+
+      test_queues.each do |tqueue|
+        threads << Thread.new do
+          test_queue = tqueue
+          start_time = Time.new
+          test_queue.each do |test|
+            output, exit_code = run_ssh(hostname, test[:title], test[:command], test[:options][:timeout], ssh_user)
+            test[:output]  = output
+            test[:exit_code]  = exit_code
+            test[:success] = exit_code == 0
+            test[:completed] = true
+
+            still_running_tests = test_queues.map do |q|
+              q.select{ |t| t[:completed] != true }
+            end
+            still_running_tests.flatten!.map!{ |t| t[:title] }
+            if still_running_tests.length > 0
+              mins, secs = (Time.new - start_time).abs.divmod(60)
+              puts "Still Running Tests (#{mins}m #{secs.to_i}s):"
+              puts still_running_tests
+              puts "\n\n\n"
+            end
+          end
+        end
+      end
+
+      threads.each { |t| t.join }
+
+      failures = test_queues.map{ |q| q.select{ |t| t[:success] == false }}
+      failures.flatten!
+      retry_queue = []
+      if failures.length > 0
+        idle_all_gears(hostname)
+        print "Failures\n"
+        print failures.map{ |f| f[:title] }.join("\n")
+        puts "\n\n\n"
+
+        #process failures
+        failures.each do |failed_test|
+          if failed_test[:options].has_key?(:cucumber_rerun_file)
+            retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir])
+          elsif failed_test[:output] =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
+            output.lines.each do |line|
+              if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
+                test = $1
+                scenario = $2
+                if failed_test[:options][:retry_indivigually]
+                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}:#{scenario}")
+                else
+                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}")
+                end
+              end
+            end
+          elsif failed_test[:options][:retry_indivigually] && failed_test[:output].include?("Failure:") && failed_test[:output].include?("rake_test_loader")
+            found_test = false
+            failed_test[:output].lines.each do |line|
+              if line =~ /\A(test_\w+)\((\w+Test)\) \[\/.*\/(test\/.*_test\.rb):(\d+)\]:/
+                found_test = true
+                test_name = $1
+                class_name = $2
+                file_name = $3
+
+                # determine if the first part of the command is a directory change
+                # if so, include that in the retry command
+                chdir_command = ""
+                if cmd =~ /\A(cd .+?; )/
+                  chdir_command = $1
+                end
+                retry_queue << build_rake_command("#{class_name} (#{test_name})", "#{chdir_command} ruby -Ilib:test #{file_name} -n #{test_name}", true)
+              end
+            end
+            retry_queue << {
+                :command  => failed_test[:command],
+                :options  => failed_test[:options],
+                :title    => failed_test[:title]
+            }
+          else
+            retry_queue << {
+                :command => failed_test[:command],
+                :options => failed_test[:options],
+                :title   => failed_test[:title]
+            }
+          end
+        end
+      end
+      retry_queue
+    end
+
+    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature")
+      rerun_file = "/tmp/rerun_#{SecureRandom.hex}.txt"
+      opts = []
+      opts << "--strict"
+      opts << "-f progress"
+      opts << "-f rerun --out #{rerun_file}"
+      case(BASE_OS)
+        when "rhel" || "centos" then
+          tags += ["~@fedora-18-only", "~@fedora-19-only", "~@not-rhel", "~@jboss", "~@not-origin"]
+        when "fedora-19"
+          tags += ["~@fedora-18-only", "~@rhel-only", "~@not-fedora-19", "~@jboss", "~@not-origin"]
+        when "fedora-18"
+          tags += ["~@fedora-19-only", "~@rhel-only", "~@not-fedora-18", "~@jboss", "~@not-origin"]
+      end
+      opts += tags.map{ |t| "-t #{t}"}
+      opts << "-r #{test_dir}"
+      if old_rerun_file.nil?
+        opts << "#{test_dir}/#{feature_file}"
+      else
+        opts << "@#{old_rerun_file}"
+      end
+      {:command => wrap_test_command("cucumber #{opts.join(' ')}", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env}, :title => title}
+    end
+
+    def build_rake_command(title="", cmd="", env = {}, retry_indivigually=true)
+      {:command => wrap_test_command(cmd, env), :options => {:retry_indivigually => retry_indivigually, :timeout => @@SSH_TIMEOUT, :env => env}, :title => title}
+    end
+
+    def wrap_test_command(command, env={})
+      env_str = ""
+      unless env.nil?
+        env.each do |k,v|
+          env_str += "export #{k}=#{v}; "
+        end
+      end
+      if BASE_OS.start_with? "fedora"
+        "sudo bash -c \"runcon -t openshift_initrc_t bash -c \\\"export REGISTER_USER=1 ; #{env_str} #{command}\\\"\""
+      elsif(BASE_OS == "rhel" or BASE_OS == "centos")
+        "sudo bash -c \"/usr/bin/scl enable ruby193 \\\"export LANG=en_US.UTF-8 ; export REGISTER_USER=1; #{env_str} #{command}\\\"\""
+      end
+    end
   end
 end

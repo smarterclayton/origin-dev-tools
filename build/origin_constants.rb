@@ -6,7 +6,6 @@ OPTIONS = {
   "fedora-19" => {
     "amis"            => {"us-east-1" =>"ami-6145cc08"},
     "devenv_name"     => "oso-fedora",
-    "ssh_user"        => "ec2-user",    
     "ignore_packages" => [
       'openshift-origin-util-scl',
       'rubygem-openshift-origin-auth-kerberos',
@@ -41,6 +40,7 @@ OPTIONS = {
       #'openshift-origin-cartridge-perl',
       #'openshift-origin-cartridge-python',
       'openshift-origin-cartridge-jbosseap',
+      #'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-jbossews',
       #'openshift-origin-cartridge-mysql',
       #'openshift-origin-cartridge-cron',
@@ -53,7 +53,6 @@ OPTIONS = {
   "rhel"   => {
     "amis"            => {"us-east-1" =>"ami-7d0c6314"},
     "devenv_name"     => "oso-rhel",
-    "ssh_user"        => "ec2-user",
     "ignore_packages" => [
       'rubygem-openshift-origin-auth-kerberos',
       'openshift-origin-util',
@@ -142,9 +141,7 @@ def guess_os(base_os=nil)
 end
 
 def def_constants(base_os="fedora-19")
-
   Object.const_set(:AMI, OPTIONS[base_os]["amis"]) unless Object.const_defined?(:AMI)
-  Object.const_set(:SSH_USER, OPTIONS[base_os]["ssh_user"]) unless Object.const_defined?(:SSH_USER)  
   Object.const_set(:DEVENV_NAME, OPTIONS[base_os]["devenv_name"]) unless Object.const_defined?(:DEVENV_NAME)
   Object.const_set(:IGNORE_PACKAGES, OPTIONS[base_os]["ignore_packages"]) unless Object.const_defined?(:IGNORE_PACKAGES)
   Object.const_set(:CUCUMBER_OPTIONS, OPTIONS[base_os]["cucumber_options"]) unless Object.const_defined?(:CUCUMBER_OPTIONS)

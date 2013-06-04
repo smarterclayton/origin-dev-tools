@@ -16,10 +16,6 @@ module OpenShift
     include OpenShift::BuilderHelper
 
     no_tasks do
-      def ssh_user
-        return "root"
-      end
-
       def post_launch_setup(hostname,options)
         # Child classes can override, if required
       end
@@ -28,6 +24,7 @@ module OpenShift
     
     desc "find_and_build_specs", "Builds all non ignored specs in the current directory", :hide => true
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def find_and_build_specs
       def_constants(guess_os(options.base_os))
       
@@ -88,6 +85,7 @@ module OpenShift
     desc "install_required_packages", "Install the packages required, as specified in the spec files"
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def install_required_packages
       def_constants(guess_os(options.base_os))
       
@@ -122,6 +120,7 @@ module OpenShift
     method_option :instance_type, :required => false, :desc => "Amazon machine type override (default c1.medium)"
     method_option :extra_rpm_dir, :required => false, :dessc => "Directory containing extra rpms to be installed"
     method_option :disable_selinux, :required => false, :default => false, :type => :boolean, :dessc => "Directory containing extra rpms to be installed"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def build(name, build_num)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -131,7 +130,7 @@ module OpenShift
   
       # Establish a new connection
       conn = connect(options.region)
-  
+
       image = nil
       if options.install_required_packages?
         # Create a new builder instance
@@ -161,6 +160,7 @@ module OpenShift
     method_option :include_stale, :type => :boolean, :desc => "Include packages that have been tagged but not synced to the repo"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :retry_failure_with_tag, :type => :boolean, :default=>true, :desc => "If a package fails to build, tag it and retry the build."
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def update
       def_constants(guess_os())
       
@@ -211,6 +211,7 @@ module OpenShift
     method_option :skip_build, :type => :boolean, :desc => "Indicator to skip the rpm build/install"
     method_option :clean_metadata, :type => :boolean, :desc => "Cleans metadata before running yum commands"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def sync(name)
       def_constants(guess_os(options.base_os))
       
@@ -223,6 +224,7 @@ module OpenShift
     method_option :download_artifacts, :type => :boolean, :desc => "Download artifacts before terminating"    
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def terminate(tag)
       def_constants(guess_os(options.base_os))
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
@@ -245,7 +247,7 @@ module OpenShift
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :image_name, :required => false, :desc => "AMI ID or DEVENV name to launch"
     method_option :v2_carts, :required => false, :type => :boolean, :default => false, :desc => "Launch Origin AMI with v2 cartridges enabled"
-
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def launch(name)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
@@ -313,11 +315,12 @@ module OpenShift
     method_option :sauce_access_key, :required => false, :desc => "Sauce Labs access key"
     method_option :sauce_overage, :type => :boolean, :desc => "Run Sauce Labs tests even if we are over our monthly minute quota"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def test(tag)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       conn = connect(options.region)
-      instance = find_instance(conn, tag, true, true, ssh_user)
+      instance = find_instance(conn, tag, true, true, options.ssh_user)
       hostname = instance.dns_name
 
       test_impl(tag, hostname, instance, conn, options)
@@ -327,6 +330,7 @@ module OpenShift
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def sanity_check(tag)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
