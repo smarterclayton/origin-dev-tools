@@ -4,7 +4,7 @@
 
 OPTIONS = {
   "fedora-19" => {
-    "amis"            => {"us-east-1" =>"ami-6145cc08"},
+    "amis"            => {"us-east-1" =>"ami-6f3b5006"},
     "devenv_name"     => "oso-fedora",
     "ignore_packages" => [
       'openshift-origin-util-scl',

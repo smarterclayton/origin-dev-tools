@@ -86,7 +86,7 @@ module SetupHelper
   def self.create_openshift_deps_rpm_repository
     if(guess_os == "rhel" or guess_os == "centos")
       url = "https://mirror.openshift.com/pub/openshift-origin/rhel-6/$basearch/"
-    elsif guess_os == "fedora"
+    elsif guess_os == "fedora-19"
       url = "https://mirror.openshift.com/pub/openshift-origin/fedora-19/$basearch/"
     end
 

@@ -526,11 +526,14 @@ chmod +x /tmp/reset_test_dir.sh
             still_running_tests = test_queues.map do |q|
               q.select{ |t| t[:completed] != true }
             end
-            still_running_tests.flatten!.map!{ |t| t[:title] }
+
             if still_running_tests.length > 0
               mins, secs = (Time.new - start_time).abs.divmod(60)
               puts "Still Running Tests (#{mins}m #{secs.to_i}s):"
-              puts still_running_tests
+              still_running_tests.each_index do |q_idx|
+                puts "\t Queue #{q_idx}:"
+                print still_running_tests[q_idx].map{ |t| "\t\t#{t[:title]}" }.join("\n"), "\n"
+              end
               puts "\n\n\n"
             end
           end
