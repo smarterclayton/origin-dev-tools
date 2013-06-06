@@ -336,7 +336,7 @@ module OpenShift
       def_constants(guess_os(options.base_os))
 
       conn = connect(options.region)
-      instance = find_instance(conn, tag, true, true, ssh_user)
+      instance = find_instance(conn, tag, true, true, options.ssh_user)
       hostname = instance.dns_name
 
       sanity_check_impl(tag, hostname, instance, conn, options)
