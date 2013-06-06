@@ -3,49 +3,56 @@
 #
 
 OPTIONS = {
-  "fedora" => {
+  "fedora-19" => {
     "amis"            => {"us-east-1" =>"ami-6145cc08"},
     "devenv_name"     => "oso-fedora",
-    "ssh_user"        => "ec2-user",    
     "ignore_packages" => [
-      'openshift-origin-util-scl', 
-      'rubygem-openshift-origin-auth-kerberos', 
-      'openshift-origin-cartridge-postgresql-8.4',
-      "openshift-origin-cartridge-ruby-1.8",
-      "openshift-origin-cartridge-ruby-1.9-scl",
+      'openshift-origin-util-scl',
+      'rubygem-openshift-origin-auth-kerberos',
+
+      #v1 carts
+      #'openshift-origin-cartridge-10gen-mms-agent-0.1',
+      'openshift-origin-cartridge-community-python-2.7',
+      'openshift-origin-cartridge-community-python-3.3',
+      #'openshift-origin-cartridge-cron-1.4',
+      #'openshift-origin-cartridge-diy-0.1',
+      #'openshift-origin-cartridge-haproxy-1.4',
+      'openshift-origin-cartridge-jbosseap-6.0',
+      'openshift-origin-cartridge-jbossews-1.0',
+      'openshift-origin-cartridge-jbossews-2.0',
+      #'openshift-origin-cartridge-jenkins-1.4',
+      #'openshift-origin-cartridge-jenkins-client-1.4',
+      #'openshift-origin-cartridge-mongodb-2.2',
+      'openshift-origin-cartridge-mysql-5.1',
+      'openshift-origin-cartridge-nodejs-0.6',
       'openshift-origin-cartridge-perl-5.10',
       'openshift-origin-cartridge-php-5.3',
-      'openshift-origin-cartridge-python-2.6',
       'openshift-origin-cartridge-phpmyadmin-3.4',
-
-      'openshift-origin-cartridge-jbosseap-6.0', 
-      "openshift-origin-cartridge-switchyard-0.6",
+      'openshift-origin-cartridge-postgresql-8.4',
+      'openshift-origin-cartridge-python-2.6',
+      'openshift-origin-cartridge-ruby-1.8',
+      'openshift-origin-cartridge-ruby-1.9-scl',
       'openshift-origin-cartridge-switchyard-0.6',
-      'openshift-origin-cartridge-jbossews-1.0', 
-      'openshift-origin-cartridge-jbossews-2.0',
 
-      'openshift-origin-cartridge-diy',
-      'openshift-origin-cartridge-ruby18',
-      'openshift-origin-cartridge-ruby',
-      'openshift-origin-cartridge-perl',
-      'openshift-origin-cartridge-python',
+      #v2 carts
+      #'openshift-origin-cartridge-ruby18',
+      #'openshift-origin-cartridge-ruby',
+      #'openshift-origin-cartridge-perl',
+      #'openshift-origin-cartridge-python',
       'openshift-origin-cartridge-jbosseap',
+      #'openshift-origin-cartridge-jbossas',
       'openshift-origin-cartridge-jbossews',
-      'openshift-origin-cartridge-mysql',
-      'openshift-origin-cartridge-cron',
-      'openshift-origin-cartridge-ceylon',
-      'openshift-origin-cartridge-tomcat',
-      
-      'openshift-origin-cartridge-ceylon-0.5',
-      'openshift-origin-cartridge-infinispan-5.2',
+      #'openshift-origin-cartridge-mysql',
+      #'openshift-origin-cartridge-cron',
+      #'openshift-origin-cartridge-ceylon',
+      #'openshift-origin-cartridge-tomcat',
     ],
-    "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@rhel-only -t ~@jboss -t ~@not-origin',
-    "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
+    "cucumber_options"        => '--strict -f progress -f html -t ~@rhel-only -t ~@jboss -t ~@not-origin',
+    "broker_cucumber_options" => '--strict -f progress -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
   },
   "rhel"   => {
-    "amis"            => {"us-east-1" =>"ami-cc5af9a5"},
+    "amis"            => {"us-east-1" =>"ami-7d0c6314"},
     "devenv_name"     => "oso-rhel",
-    "ssh_user"        => "root",
     "ignore_packages" => [
       'rubygem-openshift-origin-auth-kerberos',
       'openshift-origin-util',
@@ -102,7 +109,6 @@ SIBLING_REPOS = {
   'origin-server' => ['../origin-server'],
   'rhc' => ['../rhc'],
   'origin-dev-tools' => ['../origin-dev-tools'],
-  'origin-community-cartridges' => ['../origin-community-cartridges'],                  
   'puppet-openshift_origin' => ['../puppet-openshift_origin'],
 }
 OPENSHIFT_ARCHIVE_DIR_MAP = {'rhc' => 'rhc/'}
@@ -110,7 +116,6 @@ SIBLING_REPOS_GIT_URL = {
   'origin-server' => 'https://github.com/openshift/origin-server.git',
   'rhc' => 'https://github.com/openshift/rhc.git',
   'origin-dev-tools' => 'https://github.com/openshift/origin-dev-tools.git',
-  'origin-community-cartridges' => 'https://github.com/openshift/origin-community-cartridges.git',
   'puppet-openshift_origin' => 'https://github.com/openshift/puppet-openshift_origin.git'
 }
 
@@ -123,7 +128,8 @@ $amz_options = {:key_name => KEY_PAIR, :instance_type => TYPE}
 def guess_os(base_os=nil)
   return base_os unless base_os.nil?
   if File.exist?("/etc/fedora-release")
-    return "fedora"
+    version = File.open("/etc/fedora-release").read.match(/[\w ]*release ([\d]+) [.]*/)[1]
+    return "fedora-#{version}"
   elsif File.exist?("/etc/redhat-release")
     data = File.read("/etc/redhat-release")
     if data.match(/centos/)
@@ -134,9 +140,8 @@ def guess_os(base_os=nil)
   end
 end
 
-def def_constants(base_os="fedora")
+def def_constants(base_os="fedora-19")
   Object.const_set(:AMI, OPTIONS[base_os]["amis"]) unless Object.const_defined?(:AMI)
-  Object.const_set(:SSH_USER, OPTIONS[base_os]["ssh_user"]) unless Object.const_defined?(:SSH_USER)  
   Object.const_set(:DEVENV_NAME, OPTIONS[base_os]["devenv_name"]) unless Object.const_defined?(:DEVENV_NAME)
   Object.const_set(:IGNORE_PACKAGES, OPTIONS[base_os]["ignore_packages"]) unless Object.const_defined?(:IGNORE_PACKAGES)
   Object.const_set(:CUCUMBER_OPTIONS, OPTIONS[base_os]["cucumber_options"]) unless Object.const_defined?(:CUCUMBER_OPTIONS)
