@@ -551,7 +551,7 @@ chmod +x /tmp/reset_test_dir.sh
         #process failures
         failures.each do |failed_test|
           if failed_test[:options].has_key?(:cucumber_rerun_file)
-            retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir])
+            retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], nil, failed_test[:options][:require_gemfile_dir])
           elsif failed_test[:output] =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
             output.lines.each do |line|
               if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
@@ -599,7 +599,7 @@ chmod +x /tmp/reset_test_dir.sh
       retry_queue
     end
 
-    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature")
+    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature", require_bundler=false)
       rerun_file = "/tmp/rerun_#{SecureRandom.hex}.txt"
       opts = []
       opts << "--strict"
@@ -620,7 +620,11 @@ chmod +x /tmp/reset_test_dir.sh
       else
         opts << "@#{old_rerun_file}"
       end
-      {:command => wrap_test_command("cucumber #{opts.join(' ')}", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env}, :title => title}
+      if not require_gemfile_dir.nil?
+        {:command => wrap_test_command("cd #{require_gemfile_dir}; bundle install --path=gems; bundle exec \"cucumber #{opts.join(' ')}\"", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env, :require_gemfile_dir => require_gemfile_dir}, :title => title}
+      else
+        {:command => wrap_test_command("cucumber #{opts.join(' ')}", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env}, :title => title}
+      end
     end
 
     def build_rake_command(title="", cmd="", env = {}, retry_indivigually=true)
