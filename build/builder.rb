@@ -263,7 +263,7 @@ module OpenShift
         puts "Launching latest instance #{ami.id} - #{ami.name}"
       end
 
-      instance = launch_instance(ami, name, 1, ssh_user)
+      instance = launch_instance(ami, name, 1, options.ssh_user)
       hostname = instance.dns_name
       puts "Done"
       puts "Hostname: #{hostname}"
@@ -286,7 +286,7 @@ module OpenShift
       if File.exists?(home_dir)
         Dir.glob(File.join(home_dir, '???*'), File::FNM_DOTMATCH).each {|file|
           puts "Installing ~/#{File.basename(file)}"
-          scp_to(hostname, file, "~/", File.stat(file).mode, 10, ssh_user)
+          scp_to(hostname, file, "~/", File.stat(file).mode, 10, options.ssh_user)
         }
       end
 
@@ -344,10 +344,11 @@ module OpenShift
     
     desc "print_hostname", "Print the hostname of a tagged instance"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def print_hostname(tag)
       @@log.level = Logger::ERROR
       conn = connect(options.region)
-      instance = find_instance(conn, tag, true, true, ssh_user, true)
+      instance = find_instance(conn, tag, true, true, options.ssh_user, true)
       hostname = instance.dns_name
       print hostname
     end

@@ -445,25 +445,25 @@ retries = 0
       def download_artifacts(hostname)
         puts "Downloading logs and screenshots..."
         `rm -rf rhc/log origin-rpms origin-srpms; mkdir -p rhc/log/; mkdir -p origin-rpms; mkdir -p origin-srpms; pushd rhc/log > /dev/null; mkdir -p broker mcollective system screenshots selenium jbossas broker-profiler coverage; popd > /dev/null`
-        scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, ssh_user)
-        scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, ssh_user)
-        scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, ssh_user)
-        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, ssh_user)
-        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, ssh_user)
-        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, ssh_user)
+        scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/messages", "rhc/log/system/messages.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/secure", "rhc/log/system/secure.log", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/audit/audit.log", "rhc/log/system/audit.log", 60, options.ssh_user)
+        scp_from(hostname, "/tmp/rhc/*_coverage", "rhc/log/coverage", 60, options.ssh_user)
 
         ssh(hostname, "sudo bash -c \"
           rm -rf /tmp/origin-rpms;
           mkdir -p /tmp/origin-rpms;
           cp -rf /root/origin-rpms/*.rpm /tmp/origin-rpms/;
-          chown #{SSH_USER}:#{SSH_USER} -R /tmp/origin-rpms\"", 60, false, 2, ssh_user)
-        scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, ssh_user)
-        scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, ssh_user)
+          chown #{SSH_USER}:#{SSH_USER} -R /tmp/origin-rpms\"", 60, false, 2, options.ssh_user)
+        scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, options.ssh_user)
+        scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, options.ssh_user)
         puts "Done"
       end
       
@@ -477,7 +477,7 @@ retries = 0
       end
 
       def setup_verifier(hostname, branch)
-        update_remote_tests(hostname, branch, "/data", ssh_user)
+        update_remote_tests(hostname, branch, "/data", options.ssh_user)
       end
 
       def rpm_manifest(hostname, sshuser="root")
@@ -711,19 +711,19 @@ retries = 0
 
       def sync_impl(name, options)
         # Get the hostname from a tag lookup or assume it's SSH accessible directly
-        hostname = get_host_by_name_or_tag(name, options, ssh_user)
+        hostname = get_host_by_name_or_tag(name, options, options.ssh_user)
 
-        clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", ssh_user)
-        update_remote_tests(hostname, nil, "/data", ssh_user)
+        clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", options.ssh_user)
+        update_remote_tests(hostname, nil, "/data", options.ssh_user)
         
         ret = 0
         if !options.skip_build?
           puts "Performing remote install..."
 
-          out, ret = ssh(hostname, "cd /data/ ; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, ssh_user)
+          out, ret = ssh(hostname, "cd /data/ ; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 1, options.ssh_user)
           print_and_exit(ret, out) if ret != 0
 
-          out, ret = ssh(hostname, "sudo bash -c \"yum clean metadata\"", 60 * 2, true, 2, ssh_user) if options.clean_metadata?
+          out, ret = ssh(hostname, "sudo bash -c \"yum clean metadata\"", 60 * 2, true, 2, options.ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
 
           cmd = "build/devenv update"
@@ -733,10 +733,10 @@ retries = 0
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 1, ssh_user) if ret == 0
+          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd}  2>&1 \"", 60 * 15, true, 1, options.ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
 
-          out, ret = ssh(hostname, "sudo bash -c \"#{options.clean_metadata? ? "yum update --disablerepo='openshift-origin' -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, ssh_user) if options.clean_metadata?
+          out, ret = ssh(hostname, "sudo bash -c \"#{options.clean_metadata? ? "yum update --disablerepo='openshift-origin' -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, options.ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
           
           post_launch_setup(hostname, options)
@@ -750,7 +750,7 @@ retries = 0
         $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:ec2-user \!requiretty >> /etc/sudoers"
 
         puts "Launching AMI: #{image.id} - #{image.name}"
-        instance = launch_instance(image, name + "_" + build_num, 3, "ec2-user")
+        instance = launch_instance(image, name + "_" + build_num, 3, options.ssh_user)
         hostname = instance.dns_name
 
         puts "Done"
@@ -795,7 +795,7 @@ baseurl=http://yum.puppetlabs.com/el/6/dependencies/x86_64/
 enabled=1
 gpgcheck=0
 EOF"
-          }, 60 * 2, true, 3, ssh_user)
+          }, 60 * 2, true, 3, options.ssh_user)
               print_and_exit(ret, out) if ret != 0
             end
 
@@ -997,7 +997,7 @@ ONBOOT=yes
 sudo bash -c \"/etc/init.d/network restart\"
 sudo bash -c \"service named restart\"
 }
-        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, ssh_user)
+        out, ret = ssh(hostname, cmd, 60 * 5, true, 1, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
       end
 
