@@ -1019,10 +1019,10 @@ sudo bash -c \"service named restart\"
       def post_launch_setup(hostname,options)
 	      base_os = guess_os
         # reset the eth0 network config to add the dns entries
-        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_hostname.pp\"", 60 * 20, true, 1, options.ssh_user)
+        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_hostname.pp\"", 60 * 20, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         
-        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_origin.pp\"", 60 * 20, true, 1, options.ssh_user)
+        out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_origin.pp\"", 60 * 20, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         print_highlighted_output( "Origin setup", out)
         restart_services_remote(hostname, options.ssh_user)
