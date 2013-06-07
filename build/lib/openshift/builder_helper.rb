@@ -602,7 +602,7 @@ chmod +x /tmp/reset_test_dir.sh
       retry_queue
     end
 
-    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature", require_bundler=false)
+    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature", require_gemfile_dir=nil)
       rerun_file = "/tmp/rerun_#{SecureRandom.hex}.txt"
       opts = []
       opts << "--strict"

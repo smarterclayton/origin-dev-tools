@@ -692,10 +692,14 @@ retries = 0
           broker_profiler(hostname, enable=false) if options.profile_broker?
 
           puts "Done"
+        rescue => e
+          print "Exception occured #{e.message}\n"
+          print e.backtrace, "\n\n"
+          raise e
         ensure
           download_artifacts(hostname) if options.terminate?
           if options.terminate?
-            terminate_instance(instance)
+            terminate_instance(instance, true)
           end
         end
       end
@@ -767,6 +771,10 @@ retries = 0
         ret, out = 0, nil
         begin
           if options.install_required_packages?
+            puts "Disable updates-testing repo..."
+            out, ret = ssh(hostname, "sudo bash -c \"mv /etc/yum.repos.d/fedora-updates-testing.repo /etc/yum.repos.d/fedora-updates-testing.disabled\"", 60 * 20, true, 3, options.ssh_user)
+            print_and_exit(ret, out) if ret != 0
+
             puts "Starting yum update..."
             out, ret = ssh(hostname, "sudo bash -c \"yum -y update\"", 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
@@ -811,8 +819,12 @@ EOF"
               out, ret = ssh(hostname, "sudo bash -c \"sed -i \'/include-dependencies/d\' /usr/share/ruby/vendor_ruby/puppet/provider/package/gem.rb\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955", out)
 
-              out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/passenger-3.0.*/ext/ruby/native && " +
-                  "cp -f /usr/lib64/gems/ruby/passenger-3.0.*/lib/native/* /usr/share/gems/gems/passenger-3.0.*/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
+              out, ret = ssh(hostname, "basename `ls -d /usr/lib64/gems/ruby/passenger-3.*`", 60 * 10, true, 3, options.ssh_user)
+              passsenger_version = out
+              print "Passenger version #{passsenger_version}\n\n"
+
+              out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native && " +
+                  "cp -f /usr/lib64/gems/ruby/#{passsenger_version}/lib/native/* /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Fix passenger", out)
             end
           end
