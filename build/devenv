@@ -461,7 +461,7 @@ retries = 0
           rm -rf /tmp/origin-rpms;
           mkdir -p /tmp/origin-rpms;
           cp -rf /root/origin-rpms/*.rpm /tmp/origin-rpms/;
-          chown #{SSH_USER}:#{SSH_USER} -R /tmp/origin-rpms\"", 60, false, 2, options.ssh_user)
+          chown #{options.ssh_user}:#{options.ssh_user} -R /tmp/origin-rpms\"", 60, false, 2, options.ssh_user)
         scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, options.ssh_user)
         scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, options.ssh_user)
         puts "Done"
@@ -811,8 +811,8 @@ EOF"
               out, ret = ssh(hostname, "sudo bash -c \"sed -i \'/include-dependencies/d\' /usr/share/ruby/vendor_ruby/puppet/provider/package/gem.rb\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955", out)
 
-              out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/passenger-3.0.19/ext/ruby/native && " +
-                  "cp -f /usr/lib64/gems/ruby/passenger-3.0.19/lib/native/* /usr/share/gems/gems/passenger-3.0.19/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
+              out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/passenger-3.0.*/ext/ruby/native && " +
+                  "cp -f /usr/lib64/gems/ruby/passenger-3.0.*/lib/native/* /usr/share/gems/gems/passenger-3.0.*/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Fix passenger", out)
             end
           end
