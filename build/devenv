@@ -14,6 +14,7 @@ require 'pp'
 require 'yaml'
 require 'builder'
 require 'securerandom'
+require 'tempfile'
 
 include FileUtils
 
@@ -655,7 +656,7 @@ retries = 0
               if BASE_OS == 'fedora-19'
                 test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --local && bundle exec rake spec', {}, false)
               else
-                test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --path=/tmp/rhc_bundle && bundle exec rake spec', false)
+                test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --path=/tmp/rhc_bundle && bundle exec rake spec', {}, false)
               end
             end
           end
@@ -771,9 +772,11 @@ retries = 0
         ret, out = 0, nil
         begin
           if options.install_required_packages?
-            puts "Disable updates-testing repo..."
-            out, ret = ssh(hostname, "sudo bash -c \"mv /etc/yum.repos.d/fedora-updates-testing.repo /etc/yum.repos.d/fedora-updates-testing.disabled\"", 60 * 20, true, 3, options.ssh_user)
-            print_and_exit(ret, out) if ret != 0
+            if BASE_OS == "fedora-19"
+              puts "Disable updates-testing repo..."
+              out, ret = ssh(hostname, "sudo bash -c \"mv /etc/yum.repos.d/fedora-updates-testing.repo /etc/yum.repos.d/fedora-updates-testing.disabled\"", 60 * 20, true, 3, options.ssh_user)
+              print_and_exit(ret, out) if ret != 0
+            end
 
             puts "Starting yum update..."
             out, ret = ssh(hostname, "sudo bash -c \"yum -y update\"", 60 * 20, true, 3, options.ssh_user)
@@ -826,6 +829,40 @@ EOF"
               out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native && " +
                   "cp -f /usr/lib64/gems/ruby/#{passsenger_version}/lib/native/* /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
               print_highlighted_output("Fix passenger", out)
+            end
+
+            if BASE_OS == "rhel"
+              #fix for https://bugs.launchpad.net/cloud-init/+bug/1180028
+              file = Tempfile.new('rclocal')
+              begin
+                file.write(%{
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+touch /var/lock/subsys/local
+if [ ! -d /root/.ssh ] ; then
+    mkdir -p /root/.ssh
+    chmod 0700 /root/.ssh
+    restorecon /root/.ssh
+fi
+
+# bz 707364
+if [ ! -f /etc/blkid/blkid.tab ] ; then
+        blkid /dev/xvda &>/dev/null
+fi
+})
+                file.flush
+                file.close
+                scp_to(hostname, file.path, "~#{options.ssh_user}/rc.local",15,5,options.ssh_user)
+              ensure
+                file.unlink
+              end
+
+              out, ret = ssh(hostname, "sudo bash -c \"cp -f ~#{options.ssh_user}/rc.local /etc/rc.local\"", 60 * 2, true, 3, options.ssh_user)
+              print_and_exit(ret, out) if ret != 0
             end
           end
           out, ret = ssh(hostname, "sudo bash -c \"rm -rf /data && mkdir -p /data && chown -R #{options.ssh_user}:#{options.ssh_user} /data/\"", 60 * 10, true, 3, options.ssh_user)
