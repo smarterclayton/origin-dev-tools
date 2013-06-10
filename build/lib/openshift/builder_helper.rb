@@ -554,16 +554,27 @@ chmod +x /tmp/reset_test_dir.sh
         #process failures
         failures.each do |failed_test|
           if failed_test[:options].has_key?(:cucumber_rerun_file)
-            retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], nil, failed_test[:options][:require_gemfile_dir])
+            retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env],
+                                                  failed_test[:options][:cucumber_rerun_file],
+                                                  failed_test[:options][:test_dir],
+                                                  "*.feature",
+                                                  failed_test[:options][:require_gemfile_dir],
+                                                  failed_test[:options][:other_outputs])
           elsif failed_test[:output] =~ /cucumber openshift-test\/tests\/.*\.feature:\d+/
             output.lines.each do |line|
               if line =~ /cucumber openshift-test\/tests\/(.*\.feature):(\d+)/
                 test = $1
                 scenario = $2
                 if failed_test[:options][:retry_indivigually]
-                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}:#{scenario}")
+                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env],
+                                                        failed_test[:options][:cucumber_rerun_file],
+                                                        failed_test[:options][:test_dir],
+                                                        "#{test}:#{scenario}")
                 else
-                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env], failed_test[:options][:cucumber_rerun_file], failed_test[:options][:test_dir], "#{test}")
+                  retry_queue << build_cucumber_command(failed_test[:title], [], failed_test[:options][:env],
+                                                        failed_test[:options][:cucumber_rerun_file],
+                                                        failed_test[:options][:test_dir],
+                                                        "#{test}")
                 end
               end
             end
@@ -602,12 +613,18 @@ chmod +x /tmp/reset_test_dir.sh
       retry_queue
     end
 
-    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests", feature_file="*.feature", require_gemfile_dir=nil)
+    def build_cucumber_command(title="", tags=[], env = {}, old_rerun_file=nil, test_dir="/data/openshift-test/tests",
+        feature_file="*.feature", require_gemfile_dir=nil, other_outputs = nil)
+
+      other_outputs ||= {:junit => '/tmp/rhc/cucumber_results'}
       rerun_file = "/tmp/rerun_#{SecureRandom.hex}.txt"
       opts = []
       opts << "--strict"
       opts << "-f progress"
-      opts << "-f rerun --out #{rerun_file}"
+      opts << "-f rerun --out #{rerun_file} "
+      other_outputs.each do |formatter, file|
+        opts << "-f #{formatter} --out #{file}"
+      end
       case(BASE_OS)
         when "rhel" || "centos" then
           tags += ["~@fedora-18-only", "~@fedora-19-only", "~@not-rhel", "~@jboss", "~@not-origin"]
@@ -624,9 +641,27 @@ chmod +x /tmp/reset_test_dir.sh
         opts << "@#{old_rerun_file}"
       end
       if not require_gemfile_dir.nil?
-        {:command => wrap_test_command("cd #{require_gemfile_dir}; bundle install --path=gems; bundle exec \"cucumber #{opts.join(' ')}\"", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env, :require_gemfile_dir => require_gemfile_dir}, :title => title}
+        {:command => wrap_test_command("cd #{require_gemfile_dir}; bundle install --path=gems; bundle exec \"cucumber #{opts.join(' ')}\"", env),
+         :options =>
+             {:cucumber_rerun_file => rerun_file,
+              :timeout => @@SSH_TIMEOUT,
+              :test_dir => test_dir,
+              :env => env,
+              :require_gemfile_dir => require_gemfile_dir,
+              :other_outputs => other_outputs
+             },
+         :title => title
+        }
       else
-        {:command => wrap_test_command("cucumber #{opts.join(' ')}", env), :options => {:cucumber_rerun_file => rerun_file, :timeout => @@SSH_TIMEOUT, :test_dir => test_dir, :env => env}, :title => title}
+        {:command => wrap_test_command("cucumber #{opts.join(' ')}", env),
+         :options => {
+             :cucumber_rerun_file => rerun_file,
+             :timeout => @@SSH_TIMEOUT,
+             :test_dir => test_dir,
+             :env => env,
+             :other_outputs => other_outputs
+         },
+         :title => title}
       end
     end
 

@@ -70,7 +70,7 @@ module Origin
     #   - --verbose: Enable verbose logging
     def build_vm_image
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
-      def_constants(guess_os("fedora"))
+      def_constants(guess_os("fedora-19"))
 
       # Override the machine type to launch if necessary
       $amz_options[:instance_type] = options[:instance_type] if options[:instance_type]
