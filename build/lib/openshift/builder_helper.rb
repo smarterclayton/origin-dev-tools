@@ -317,6 +317,7 @@ su -c \"mkdir -p /tmp/rhc/junit\"
         File.open(config_file, 'w') do |f| f.write(<<-END
 BROKER_URL=https://#{public_ip}/broker/rest
 DOMAIN_SUFFIX=dev.rhcloud.com
+COMMUNITY_URL=https://#{public_ip}:8118/
 # Uncomment the next line to set a proxy URL for the broker
 # BROKER_PROXY_URL=
           END
@@ -327,6 +328,7 @@ DOMAIN_SUFFIX=dev.rhcloud.com
         puts "Updating ~/.openshift/console.conf with public ip = #{public_ip}"
         s = IO.read(config_file)
         s.gsub!(%r[^BROKER_URL=\s*https://[^/]+/broker/rest$]m, "BROKER_URL=https://#{public_ip}/broker/rest")
+        s.gsub!(%r[^COMMUNITY_URL=\s*https://.+$]m, "COMMUNITY_URL=https://#{public_ip}:8118/")
         File.open(config_file, 'w'){ |f| f.write(s) }
       end
     end
