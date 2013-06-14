@@ -246,7 +246,6 @@ module OpenShift
     method_option :instance_type, :required => false, :desc => "Amazon machine type override (default '#{TYPE}')"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :image_name, :required => false, :desc => "AMI ID or DEVENV name to launch"
-    method_option :v2_carts, :required => false, :type => :boolean, :default => false, :desc => "Launch Origin AMI with v2 cartridges enabled"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def launch(name)
       options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR

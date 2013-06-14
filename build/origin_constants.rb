@@ -10,32 +10,7 @@ OPTIONS = {
       'openshift-origin-util-scl',
       'rubygem-openshift-origin-auth-kerberos',
 
-      #v1 carts
-      #'openshift-origin-cartridge-10gen-mms-agent-0.1',
-      'openshift-origin-cartridge-community-python-2.7',
-      'openshift-origin-cartridge-community-python-3.3',
-      #'openshift-origin-cartridge-cron-1.4',
-      #'openshift-origin-cartridge-diy-0.1',
-      #'openshift-origin-cartridge-haproxy-1.4',
-      'openshift-origin-cartridge-jbosseap-6.0',
-      'openshift-origin-cartridge-jbossews-1.0',
-      'openshift-origin-cartridge-jbossews-2.0',
-      #'openshift-origin-cartridge-jenkins-1.4',
-      #'openshift-origin-cartridge-jenkins-client-1.4',
-      #'openshift-origin-cartridge-mongodb-2.2',
-      'openshift-origin-cartridge-mysql-5.1',
-      'openshift-origin-cartridge-nodejs-0.6',
-      'openshift-origin-cartridge-perl-5.10',
-      'openshift-origin-cartridge-php-5.3',
-      'openshift-origin-cartridge-phpmyadmin-3.4',
-      'openshift-origin-cartridge-postgresql-8.4',
-      'openshift-origin-cartridge-python-2.6',
-      'openshift-origin-cartridge-ruby-1.8',
-      'openshift-origin-cartridge-ruby-1.9-scl',
-      'openshift-origin-cartridge-switchyard-0.6',
-
-      #v2 carts
-      #'openshift-origin-cartridge-ruby18',
+      #carts
       #'openshift-origin-cartridge-ruby',
       #'openshift-origin-cartridge-perl',
       #'openshift-origin-cartridge-python',
