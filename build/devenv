@@ -968,7 +968,6 @@ class { "openshift_origin" :
   install_repo        => "file:///root/origin-rpms",
   development_mode    => true,
   configure_cgroups   => true,
-  use_v2_carts        => true,
   eth_device          => "#{options.eth_device}",
 }
 EOF
