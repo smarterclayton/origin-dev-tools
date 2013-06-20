@@ -248,7 +248,7 @@ module OpenShift
         @name ||= value.
           gsub(/\(/, '-').  # package names get unparethesized
           gsub(/\)/, '').
-          gsub(/>=.+/, ''). # strip version qualifiers
+          gsub(/[<>]=?.+/, ''). # strip version qualifiers
           gsub(/=.+/,'').
           gsub(/,/, '').
           gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
@@ -257,7 +257,7 @@ module OpenShift
         @yum_name ||= value.
           gsub(/\(/, '-').
           gsub(/\)/, '').
-          gsub(/>=.+/, '').
+          gsub(/[<>]=?.+/, '').
           gsub(/=/,'-').
           gsub(/,/, '').
           gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
