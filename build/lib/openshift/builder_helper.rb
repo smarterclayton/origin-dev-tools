@@ -501,7 +501,7 @@ chmod +x /tmp/reset_test_dir.sh
           test_run_success = true
           break
         else
-          reset_test_dir(hostname, false, ssh_user)
+          reset_test_dir(hostname, true, ssh_user)
         end
         test_queues = [failure_queue]
       end
