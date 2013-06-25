@@ -380,14 +380,17 @@ module OpenShift
 
       if File.exists?('../rhc')
         inside('../rhc') do
-          temp_commit
+          begin
+            temp_commit
 
-          puts "building rhc..."
-          `tito build --rpm --test`
-          puts "installing rhc..."
-          `sudo rpm -Uvh --force /tmp/tito/noarch/rhc-*; rm -rf /tmp/tito; mkdir -p /tmp/tito`
+            puts "building rhc..."
+            `tito build --rpm --test`
+            puts "installing rhc..."
+            `sudo rpm -Uvh --force /tmp/tito/noarch/rhc-*; rm -rf /tmp/tito; mkdir -p /tmp/tito`
 
-          reset_temp_commit
+          ensure
+            reset_temp_commit
+          end
 
           puts "Done"
         end

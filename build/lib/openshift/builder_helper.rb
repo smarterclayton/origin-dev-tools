@@ -133,9 +133,8 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
     end
 
     def sync_repo(repo_name, hostname, remote_repo_parent_dir="/root", ssh_user="root", verbose=false)
-      temp_commit
-
       begin
+        temp_commit
 
         # Get the current branch
         branch = get_branch
@@ -283,21 +282,30 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
       if $? != 0
         # Perform a temporary commit
         puts "Creating temporary commit to build"
-        `git commit -a -m "Temporary commit to build"`
-        if $? != 0
-          puts "No-op."
-        else
-          @temp_commit = true
-          puts "Done."
+
+        begin
+          `git commit -m "Temporary commit #1 - index changes"`
+        ensure
+          (@temp_commit ||= []).push("git reset --soft HEAD^") if $? == 0
         end
+
+        begin
+          `git commit -a -m "Temporary commit #2 - non-index changes"`
+        ensure
+          (@temp_commit ||= []).push("git reset --mixed HEAD^") if $? == 0
+        end
+
+        puts @temp_commit ? "No-op" : "Done"
       end
     end
 
     def reset_temp_commit
       if @temp_commit
         puts "Undoing temporary commit..."
-        `git reset HEAD^`
-        @temp_commit = false
+        while undo = @temp_commit.pop
+          `#{undo}`
+        end
+        @temp_commit = nil
         puts "Done."
       end
     end
