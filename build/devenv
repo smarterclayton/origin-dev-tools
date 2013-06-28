@@ -584,7 +584,7 @@ retries = 0
           print "user_with_certificate_capabilities@test.com already exists\n"
         end
 
-        _, _ = ssh(hostname, "sudo bash -c \"ssh-keygen -q -f /root/.ssh/id_rsa -P '' </dev/null\"")
+        _, _ = ssh(hostname, "sudo bash -c \"ssh-keygen -q -f /root/.ssh/id_rsa -P \\\"\\\" </dev/null\"", @@SSH_TIMEOUT, true, 3, ssh_user)
       end
 
       def test_impl(tag, hostname, instance, conn, options, image_id=nil)

@@ -21,6 +21,7 @@ OPTIONS = {
       #'openshift-origin-cartridge-cron',
       #'openshift-origin-cartridge-ceylon',
       #'openshift-origin-cartridge-tomcat',
+      'openshift-origin-cartridge-switchyard',
     ],
     "cucumber_options"        => '--strict -f progress -f html -t ~@rhel-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f progress -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@rhel-only -t ~@jboss',
