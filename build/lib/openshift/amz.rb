@@ -5,6 +5,8 @@ require 'date'
 
 module OpenShift
   module Amazon
+    FEDORA_SYSTEM_CA_FILE = "/etc/pki/tls/certs/ca-bundle.trust.crt"
+
     def setup_rsa_key
       unless File.exists?(RSA)
         log.info "Setting up RSA key..."
@@ -21,31 +23,13 @@ module OpenShift
     def connect(region=nil)
       conn = nil
       begin
-        # Parse the credentials
-        config = ParseConfig.new(File.expand_path("~/.awscred"))
-
         # Setup the SSH key
         setup_rsa_key
 
-        # Setup the global access configuration
-        AWS.config(
-          :access_key_id => config.get_value("AWSAccessKeyId"),
-          :secret_access_key => config.get_value("AWSSecretKey"),
-          :ssl_ca_file => "/etc/pki/tls/certs/ca-bundle.trust.crt"
-        )
+        setup_aws_config "~/.awscred"
 
         # Return the AMZ connection
         conn = AWS::EC2.new
-      rescue StandardError => e
-        puts <<-eos
-          Couldn't access credentials in #{File.expand_path("~/.awscred")}
-
-          Please create a file with the following format:
-            AWSAccessKeyId=<ACCESS_KEY>
-            AWSSecretKey=<SECRET_KEY>
-        eos
-        puts e
-        raise "Error - no credentials"
       end
           
       conn = conn.regions[region] if region
@@ -495,5 +479,39 @@ module OpenShift
         add_tag(i, "#{i.tags["Name"]}-will-terminate")
       end
     end
+
+    private
+
+    def setup_aws_config(path)
+        # Parse the credentials
+        full_path = File.expand_path(path)
+        config = ParseConfig.new(full_path)
+
+        unless config["AWSAccessKeyId"] && config["AWSSecretKey"]
+          raise <<-EOF
+Couldn't access credentials in #{full_path}
+
+Please create a file with the following format:
+            AWSAccessKeyId=<ACCESS_KEY>
+            AWSSecretKey=<SECRET_KEY>
+            # CAFile="path/to/ca_file" # optional
+          EOF
+        end
+
+        # Setup the global access configuration
+        aws_config = {
+          :access_key_id => config["AWSAccessKeyId"],
+          :secret_access_key => config["AWSSecretKey"]
+        }
+
+        if config["CAFile"]
+          aws_config[:ca_file] = config.get_value["CAFile"]
+        elsif File.exists? FEDORA_SYSTEM_CA_FILE
+          aws_config[:ca_file] = FEDORA_SYSTEM_CA_FILE
+        end
+
+        AWS.config( aws_config )
+    end
+
   end
 end
