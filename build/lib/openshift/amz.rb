@@ -505,9 +505,9 @@ Please create a file with the following format:
         }
 
         if config.get_value("CAFile")
-          aws_config[:ca_file] = config.get_value("CAFile")
+          aws_config[:ssl_ca_file] = config.get_value("CAFile")
         elsif File.exists? FEDORA_SYSTEM_CA_FILE
-          aws_config[:ca_file] = FEDORA_SYSTEM_CA_FILE
+          aws_config[:ssl_ca_file] = FEDORA_SYSTEM_CA_FILE
         end
 
         AWS.config( aws_config )
