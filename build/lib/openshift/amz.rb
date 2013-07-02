@@ -31,7 +31,7 @@ module OpenShift
         # Return the AMZ connection
         conn = AWS::EC2.new
       end
-          
+
       conn = conn.regions[region] if region
       conn
     end

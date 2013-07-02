@@ -21,7 +21,7 @@ include FileUtils
 module Origin
   class BuilderPlugin < OpenShift::Builder
     include OpenShift::BuilderHelper
-    
+
     desc "docs", "Build OpenShift Origin Ruby documentation"
     method_option :verbose, :type => :boolean, :default => false, :desc => "Enable verbose logging"    
     # Task to build YARD documentation for all Ruby Code
@@ -29,7 +29,7 @@ module Origin
     # @param options [Hash] Thor options hash
     #   - --verbose: Enable verbose logging
     def docs
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       repo_parent_dir = File.expand_path("#{File.dirname(__FILE__)}/../../")      
       remove_dir "#{repo_parent_dir}/origin-docs"
       empty_directory "#{repo_parent_dir}/origin-docs"
@@ -69,7 +69,7 @@ module Origin
     # @param options [Hash] Thor options hash
     #   - --verbose: Enable verbose logging
     def build_vm_image
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os("fedora-19"))
 
       # Override the machine type to launch if necessary
@@ -137,7 +137,7 @@ module Origin
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def build_vm(hostname)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os("fedora-19"))
       self.options = options = self.options.dup
       options["branch"] = "master"
@@ -180,7 +180,7 @@ module Origin
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def restart_services(hostname=:local)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       if hostname == :local
         restart_services_local
@@ -204,7 +204,7 @@ module Origin
     method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def test_vm(hostname)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
 
       sanity_check_impl("", hostname, nil, nil, options)
@@ -220,7 +220,7 @@ module Origin
     method_option :install, :type => :boolean, :default => false, :desc => "Install all packages that were built"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def local_build
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       self.options = options = self.options.dup
       
@@ -282,7 +282,7 @@ retries = 0
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def release_build
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
 
       branch = get_branch
@@ -345,7 +345,7 @@ retries = 0
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :default => true, :desc => "Enable verbose logging"    
     def tag_for_release
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       base_os = guess_os(options.base_os)
       def_constants(base_os)
 
@@ -362,7 +362,7 @@ retries = 0
           end
         end
       end
-      
+
       build_dirs = get_build_dirs
       tag_failures = []
       build_dirs.each do |build_info|

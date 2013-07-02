@@ -88,8 +88,8 @@ module OpenShift
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def install_required_packages
       def_constants(guess_os(options.base_os))
-      
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       packages = get_required_packages
       packages.gsub!(">= %{rubyabi}", "")
       unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
@@ -123,7 +123,7 @@ module OpenShift
     method_option :disable_selinux, :required => false, :default => false, :type => :boolean, :dessc => "Directory containing extra rpms to be installed"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def build(name, build_num)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
 
       # Override the machine type to launch if necessary
@@ -165,7 +165,7 @@ module OpenShift
     def update
       def_constants(guess_os())
       
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       # Warn on uncommitted changes
       `git diff-index --quiet HEAD`
       puts "WARNING - Uncommitted repository changes" if $? != 0
@@ -216,7 +216,7 @@ module OpenShift
     def sync(name)
       def_constants(guess_os(options.base_os))
       
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       sync_impl(name, options)
     end
 
@@ -228,7 +228,7 @@ module OpenShift
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def terminate(tag)
       def_constants(guess_os(options.base_os))
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, false, options.ssh_user)
       if (defined? download_artifacts) && instance && (instance_status(instance) == :running) && options.download_artifacts?
@@ -249,7 +249,7 @@ module OpenShift
     method_option :image_name, :required => false, :desc => "AMI ID or DEVENV name to launch"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def launch(name)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       ami = choose_ami_for_launch(options)
 
@@ -317,7 +317,7 @@ module OpenShift
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def test(tag)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, options.ssh_user)
@@ -332,7 +332,7 @@ module OpenShift
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def sanity_check(tag)
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
 
       conn = connect(options.region)
@@ -346,7 +346,7 @@ module OpenShift
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def print_hostname(tag)
-      @@log.level = Logger::ERROR
+      log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, options.ssh_user, true)
       hostname = instance.dns_name
@@ -377,7 +377,7 @@ module OpenShift
     desc "install_local_client", "Builds and installs the local client rpm (uses sudo)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     def install_local_client
-      options.verbose? ? @@log.level = Logger::DEBUG : @@log.level = Logger::ERROR
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
 
       if File.exists?('../rhc')
         inside('../rhc') do
