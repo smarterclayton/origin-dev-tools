@@ -13,11 +13,11 @@ require 'openshift/builder_helper'
 STDOUT.sync, STDERR.sync = true
 
 # Setup logger
-@@log = Logger.new(STDOUT)
-@@log.level = Logger::DEBUG
+$log = Logger.new(STDOUT)
+$log.level = Logger::DEBUG
 
 def log
-  @@log
+  $log
 end
 
 def exit_msg(msg)
