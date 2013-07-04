@@ -164,7 +164,6 @@ module Origin
       end
       
       if base_os.start_with? "fedora"
-        run "yum -y update --enablerepo updates-testing ruby ruby-irb ruby-libs ruby-devel"
         run("gem install rspec -v '1.1.12'", options)
       end
 
@@ -774,12 +773,6 @@ retries = 0
         ret, out = 0, nil
         begin
           if options.install_required_packages?
-            if BASE_OS == "fedora-19"
-              puts "Disable updates-testing repo..."
-              out, ret = ssh(hostname, "sudo bash -c \"mv /etc/yum.repos.d/fedora-updates-testing.repo /etc/yum.repos.d/fedora-updates-testing.disabled\"", 60 * 20, true, 3, options.ssh_user)
-              print_and_exit(ret, out) if ret != 0
-            end
-
             puts "Starting yum update..."
             out, ret = ssh(hostname, "sudo bash -c \"yum -y update\"", 60 * 20, true, 3, options.ssh_user)
             print_and_exit(ret, out) if ret != 0
@@ -818,20 +811,6 @@ EOF"
 
             out, ret = ssh(hostname, "sudo bash -c \"yum install -y mod_passenger rubygem-passenger rubygem-passenger-devel rubygem-passenger-native rubygem-passenger-native-libs\"", 60 * 20, true, 3, options.ssh_user)
             print_highlighted_output("Installing passenger", out)
-
-            if BASE_OS == "fedora-19"
-              #Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955
-              out, ret = ssh(hostname, "sudo bash -c \"sed -i \'/include-dependencies/d\' /usr/share/ruby/vendor_ruby/puppet/provider/package/gem.rb\"", 60 * 10, true, 3, options.ssh_user)
-              print_highlighted_output("Workaround https://bugzilla.redhat.com/show_bug.cgi?id=952955", out)
-
-              out, ret = ssh(hostname, "basename `ls -d /usr/lib64/gems/ruby/passenger-3.*`", 60 * 10, true, 3, options.ssh_user)
-              passsenger_version = out
-              print "Passenger version #{passsenger_version}\n\n"
-
-              out, ret = ssh(hostname, "sudo bash -c \"mkdir -p /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native && " +
-                  "cp -f /usr/lib64/gems/ruby/#{passsenger_version}/lib/native/* /usr/share/gems/gems/#{passsenger_version}/ext/ruby/native/\"", 60 * 10, true, 3, options.ssh_user)
-              print_highlighted_output("Fix passenger", out)
-            end
 
             if BASE_OS == "rhel"
               #fix for https://bugs.launchpad.net/cloud-init/+bug/1180028
@@ -945,13 +924,6 @@ package { "bind":
 exec { "/usr/sbin/dnssec-keygen -a HMAC-MD5 -b 512 -n USER -r /dev/urandom -K /var/named example.com":
   require => Package["bind"],
   unless  => "/usr/bin/test -f /var/named/Kexample.com.*.key"
-}
-augeas { "hostfile":
-  context => "/files/etc/hosts",
-  changes => [
-    "set 01/ipaddr \\\${::ipaddress}",        
-    "set 01/canonical broker.example.com",
-  ],
 }
 EOF
             }, 60 * 2, true, 3, options.ssh_user)
