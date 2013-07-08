@@ -650,7 +650,7 @@ retries = 0
 
             unless options.exclude_rhc?
               if BASE_OS == 'fedora-19'
-                test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --local && bundle exec rake spec', {}, false)
+                test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --local && bundle exec rake spec', {"SKIP_RUNCON" => 1}, false)
               else
                 test_queues[0] << build_rake_command("RHC Spec", 'cd /data/openshift-test/rhc; bundle install --path=/tmp/rhc_bundle && bundle exec rake spec', {}, false)
               end
@@ -838,6 +838,20 @@ fi
 
               out, ret = ssh(hostname, "sudo bash -c \"cp -f ~#{options.ssh_user}/rc.local /etc/rc.local\"", 60 * 2, true, 3, options.ssh_user)
               print_and_exit(ret, out) if ret != 0
+            end
+
+            file = Tempfile.new('ssh_config')
+            begin
+              file.write(%{
+Host github.com
+   StrictHostKeyChecking no
+   UserKnownHostsFile=/dev/null
+})
+              file.flush
+              file.close
+              scp_to(hostname, file.path, "~#{options.ssh_user}/.ssh/config",15,5,options.ssh_user)
+            ensure
+              file.unlink
             end
           end
           out, ret = ssh(hostname, "sudo bash -c \"rm -rf /data && mkdir -p /data && chown -R #{options.ssh_user}:#{options.ssh_user} /data/\"", 60 * 10, true, 3, options.ssh_user)
@@ -1045,6 +1059,7 @@ sudo bash -c \"service named restart\"
         end
         cmd << "sudo bash -c \"rm -rf /var/www/openshift/broker/tmp/cache/*\";"
         cmd << "sudo bash -c \"/etc/cron.minutely/openshift-facts\";"
+        cmd << "sudo bash -c \"/sbin/service network restart 2>&1\";"
         cmd
       end
 
