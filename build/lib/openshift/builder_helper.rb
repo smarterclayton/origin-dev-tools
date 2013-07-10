@@ -685,7 +685,11 @@ chmod +x /tmp/reset_test_dir.sh
         end
       end
       if BASE_OS.start_with? "fedora"
-        "sudo bash -c \"runcon -t openshift_initrc_t bash -c \\\"export REGISTER_USER=1 ; #{env_str} #{command}\\\"\""
+        if env["SKIP_RUNCON"]
+          "sudo bash -c \"export REGISTER_USER=1 ; #{env_str} #{command}\""
+        else
+          "sudo bash -c \"runcon -t openshift_initrc_t bash -c \\\"export REGISTER_USER=1 ; #{env_str} #{command}\\\"\""
+        end
       elsif(BASE_OS == "rhel" or BASE_OS == "centos")
         "sudo bash -c \"/usr/bin/scl enable ruby193 \\\"export LANG=en_US.UTF-8 ; export REGISTER_USER=1; #{env_str} #{command}\\\"\""
       end
