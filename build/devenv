@@ -746,8 +746,26 @@ retries = 0
       end
   
       def build_impl(name, build_num, image, conn, options)
-        $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
-        $amz_options[:user_data] = "#!/bin/bash\nset -x\necho Defaults:ec2-user \!requiretty >> /etc/sudoers"
+        $amz_options[:block_device_mappings] = {
+            "/dev/sda1" => {
+                :volume_size => 10
+            },
+            #"/dev/sdb" => "ephemeral0"
+        }
+        $amz_options[:user_data] = %{
+#cloud-config
+
+user: #{options.ssh_user}
+growpart:
+  mode: auto
+  devices: ['/']
+runcmd:
+  - [ sh, -xc, "echo 'Defaults:#{options.ssh_user} \!requiretty' >> /etc/sudoers"]
+        }
+
+        self.options = options = options.dup
+        options["upstream_dns"] = "172.16.0.23"
+        options["eth_device"] = "eth0"
 
         puts "Launching AMI: #{image.id} - #{image.name}"
         instance = launch_instance(image, name + "_" + build_num, 3, options.ssh_user)
@@ -755,10 +773,6 @@ retries = 0
 
         puts "Done"
         puts "Hostname: #{hostname}"
-
-        self.options = options = options.dup
-        options["upstream_dns"] = "172.16.0.23"
-        options["eth_device"] = "eth0"
 
         setup_machine(hostname, options, name, build_num, image, conn, instance)
       end
@@ -850,6 +864,7 @@ Host github.com
               file.flush
               file.close
               scp_to(hostname, file.path, "~#{options.ssh_user}/.ssh/config",15,5,options.ssh_user)
+              ssh(hostname, "sudo bash -c \"cp -f ~#{options.ssh_user}/.ssh/config /root/.ssh/config\"", 60 * 2, true, 3, options.ssh_user)
             ensure
               file.unlink
             end
@@ -883,7 +898,7 @@ Host github.com
           if(BASE_OS == "rhel" or BASE_OS == "centos")
             cmd = "scl enable ruby193 \\\"#{cmd}\\\""
           end
-          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 15, true, 3, options.ssh_user) if ret == 0
+          out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; #{cmd} 2>&1 \"", 60 * 30, true, 3, options.ssh_user) if ret == 0
           print_and_exit(ret, out) if ret != 0
           print_highlighted_output("Install Output", out)
 
