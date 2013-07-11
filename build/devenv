@@ -1047,9 +1047,9 @@ sudo bash -c \"service named restart\"
       end
 
       def restart_services_commands
-        services = [ 'mongod', 'mcollective', 'activemq', 'cgconfig', 'cgred', 'openshift-cgroups',
-                     'httpd', 'openshift-broker', 'openshift-console', 'openshift-node-web-proxy',
-                      'named', 'sshd', 'oddjobd' ]
+        services = [ 'mongod', 'mcollective', 'activemq', 'cgconfig', 'cgred', 
+                      'openshift-broker', 'openshift-console', 'openshift-node-web-proxy',
+                      'named', 'sshd', 'oddjobd', 'httpd' ]
         cmd = []
         cmd += services.map do |service|
           "sudo bash -c \"/sbin/service #{service} stop 2>&1\";"
