@@ -755,7 +755,6 @@ retries = 0
         $amz_options[:user_data] = %{
 #cloud-config
 
-user: #{options.ssh_user}
 growpart:
   mode: auto
   devices: ['/']
