@@ -344,7 +344,7 @@ DOMAIN_SUFFIX=dev.rhcloud.com
     end
 
     def update_ssh_config_verifier(instance)
-      public_ip = instance.public_ip_address
+      public_ip = instance.dns_name
       ssh_config = "~/.ssh/config"
       pem_file = File.expand_path("~/.ssh/libra.pem")
       if not File.exist?(pem_file)
@@ -386,7 +386,7 @@ END
     end
 
     def update_express_server(instance)
-      public_ip = instance.public_ip_address
+      public_ip = instance.dns_name
       puts "Updating ~/.openshift/express.conf libra_server entry with public ip = #{public_ip}"
       `sed -i -e 's,^libra_server.*,libra_server=#{public_ip},' ~/.openshift/express.conf`
     end
