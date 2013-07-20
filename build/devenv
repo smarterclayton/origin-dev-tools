@@ -90,7 +90,9 @@ popd
         scp_from(hostname, "/home/#{options.ssh_user}/origin-docs/*", "origin-docs", 1200, options.ssh_user)
       ensure
         begin
-          terminate_instance(hostname) if options.terminate
+          if options.terminate?
+            terminate_instance(instance, true)
+          end
         rescue
           # suppress termination errors - they have been logged already
         end
