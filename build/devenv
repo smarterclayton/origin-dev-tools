@@ -997,6 +997,8 @@ cat<<EOF > ~#{options.ssh_user}/configure_origin.pp
 \\\$key=inline_template("<%=File.read(Dir.glob(keyfile)[0]).strip.split(\' \')[7]%>")
 class { "openshift_origin" :
   node_fqdn           => "broker.example.com",
+  mq_fqdn             => "broker.example.com",
+  broker_fqdn         => "broker.example.com",
   cloud_domain        => "example.com",
   named_tsig_priv_key => \\\$key,
   dns_servers         => ["#{options.upstream_dns}"],
