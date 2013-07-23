@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Envelope ovf:version="0.9" xml:lang="en-US" xmlns="http://www.vmware.com/schema/ovf/1/envelope" xmlns:ovf="http://www.vmware.com/schema/ovf/1/envelope" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <References>
-    <File ovf:href="openshift-origin-sda.vmdk" ovf:id="file1"/>
+    <File ovf:href="openshift-origin.vmdk" ovf:id="file1"/>
   </References>
   <Section xsi:type="ovf:DiskSection_Type">
     <Info>List of the virtual disks used in the package</Info>

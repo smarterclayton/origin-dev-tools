@@ -102,8 +102,6 @@ popd
 
     desc "build_vm_image", "Build a VM disk image"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
-    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
-    method_option :terminate, :type => :boolean, :desc => "Terminate the instance when finished"    
     # Task to build an OpenShift Origin VM image
     #
     # @param options [Hash] Thor options hash
@@ -112,54 +110,13 @@ popd
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os("fedora-19"))
 
-      # Override the machine type to launch if necessary
-      $amz_options[:instance_type] = options[:instance_type] if options[:instance_type]
-      $amz_options[:block_device_mappings] = {"/dev/sdb" => "ephemeral0"}
-  
-      # Establish a new connection
-      conn = connect(options.region)
-  
-      image = nil
-      # Create a new builder instance
-      if (options.region?nil)
-        image = conn.images[AMI["us-east-1"]]
-      elsif AMI[options.region].nil?
-        puts "No AMI specified for region:" + options.region
-        exit 1
-      else
-        image = conn.images[AMI[options.region]]
-      end
-
-      puts "Launching AMI: #{image.id} - #{image.name}"
-      instance = launch_instance(image, "oso-image-builder", 1, options.ssh_user)
-      hostname = instance.dns_name
-      puts "Done"
-      puts "Hostname: #{hostname}"
-      begin
-        ssh(hostname, 'sudo bash -c "setenforce 0"' , 60, false, 3, options.ssh_user)
-        ssh(hostname, 'sudo bash -c "yum update -y"' , 300, false, 3, options.ssh_user)
-        ssh(hostname, 'sudo bash -c "yum install -y appliance-tools qemu-img"' , 60, false, 3, options.ssh_user)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ks"), '/home/ec2-user/', 60, 5,options.ssh_user)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.vmx"), '/home/ec2-user/', 60, 5,options.ssh_user)
-        scp_to(hostname, File.expand_path("#{__FILE__ }/../templates/openshift-origin.ovf"), '/home/ec2-user/', 60, 5,options.ssh_user)
-        ssh(hostname, 'sudo bash -c "mv -f /home/ec2-user/openshift-origin.ks /mnt/"' , 60, false, 3, options.ssh_user)
-        ssh(hostname, 'sudo bash -c "mkdir -p /mnt/tmp/build && mkdir -p /mnt/openshift-origin"', 60, false, 3,options.ssh_user)
-        ssh(hostname, 'sudo bash -c "cd /mnt && appliance-creator -d -n openshift-origin -c openshift-origin.ks ' +
-            '--format=vmdk --vmem=1024 --checksum --logfile=build.log --tmpdir=/mnt/tmp/build --cache /mnt/tmp/cache/"', 3600, false, 1, options.ssh_user)
-        ssh(hostname, 'sudo bash -c "' + %{
-          /bin/cp -f /mnt/openshift-origin.ks /mnt/openshift-origin/ &&
-          /bin/mv -f /home/ec2-user/openshift-origin.v* /mnt/openshift-origin/ && 
-          /bin/mv -f /home/ec2-user/openshift-origin.ovf /mnt/openshift-origin/ && 
-          cd /mnt/openshift-origin && tar zcf openshift-origin.tgz *
-        } + '"' , 3600, false, 1, options.ssh_user)
-        FileUtils.mkdir_p "vm/"
-        scp_from(hostname, "/mnt/openshift-origin/openshift-origin.tgz", "vm/", 1200, options.ssh_user)
-      ensure
-        begin
-          terminate_instance(hostname) if options.terminate
-        rescue
-          # suppress termination errors - they have been logged already
-        end
+      #install oz from https://github.com/clalancette/oz.git
+      #ensure that libvirtd service is running
+      inside "#{File.dirname(__FILE__)}/templates/" do
+        run "rm -rf /var/lib/libvirt/images/openshift-origin.dsk"
+        run "oz-install -d 4 -t 5000 -u openshift-origin.tdl 2>&1 | tee oz_install.log"
+        run "qemu-img convert -O vmdk /var/lib/libvirt/images/openshift-origin.dsk openshift-origin.vmdk"
+        run "tar jcvf openshift-origin.tbz2 openshift-origin.ovf openshift-origin.tdl openshift-origin.vmx openshift-origin.vmdk"
       end
     end
     
