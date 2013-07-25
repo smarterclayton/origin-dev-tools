@@ -92,6 +92,10 @@ module OpenShift
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       packages = get_required_packages
       packages.gsub!(">= %{rubyabi}", "")
+      if guess_os(options.base_os) == "fedora-19"
+        packages.gsub!("ruby193-", "")
+      end
+
       unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
         exit 1
       end
