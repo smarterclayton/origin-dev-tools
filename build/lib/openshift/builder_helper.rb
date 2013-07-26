@@ -462,6 +462,7 @@ EOF
 chmod +x /tmp/reset_test_dir.sh
 }, 120, true, 1, ssh_user)
       ssh(hostname, "sudo bash -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
+      ssh(hostname, "sudo bash -c 'rm -rf /var/www/openshift/broker/tmp/cache/*'" , 120, true, 1, ssh_user)
     end
     
     def devenv_branch_wildcard(branch)
