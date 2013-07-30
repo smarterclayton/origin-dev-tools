@@ -634,7 +634,7 @@ retries = 0
               test_queues[3] << build_rake_command("OpenShift Broker Units", "cd /data/openshift-test/broker; rake test:units", {}, false)
               test_queues[0] << build_rake_command("OpenShift Broker Integration", "cd /data/openshift-test/broker; rake test:integration", {}, false)
               test_queues[2] << build_rake_command("OpenShift Broker Functional", "cd /data/openshift-test/broker; rake test:functionals", {}, false)
-              test_queues[1] << build_rake_command("OpenShift Admin Console Functional", "cd /data/openshift-test/broker; rake test:admin_console_functionals", {}, false)
+              #test_queues[1] << build_rake_command("OpenShift Admin Console Functional", "cd /data/openshift-test/broker; rake test:admin_console_functionals", {}, false)
               test_queues[3] << build_cucumber_command("Broker cucumber", ["@broker"])
             end
 
@@ -1063,7 +1063,7 @@ sudo bash -c \"service named restart\"
       def restart_services_commands
         services = [ 'mongod', 'mcollective', 'activemq', 'cgconfig', 'cgred', 
                       'openshift-broker', 'openshift-console', 'openshift-node-web-proxy',
-                      'named', 'sshd', 'oddjobd', 'httpd' ]
+                      'named', 'sshd', 'oddjobd', 'httpd', 'openshift-tc' ]
         cmd = []
         cmd += services.map do |service|
           "sudo bash -c \"/sbin/service #{service} stop 2>&1\";"
