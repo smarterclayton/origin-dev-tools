@@ -1067,6 +1067,7 @@ sudo bash -c \"service named restart\"
         cmd += services.map do |service|
           "sudo bash -c \"/sbin/service #{service} stop 2>&1\";"
         end
+        cmd << "sudo bash -c \"pkill -f mcollectived\";"
         cmd += services.map do |service|
           "sudo bash -c \"/sbin/service #{service} start 2>&1\";"
         end
