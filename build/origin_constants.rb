@@ -50,6 +50,7 @@ OPTIONS = {
       'openshift-origin-cartridge-jbossews-2.0',
       'openshift-origin-cartridge-infinispan-5.2',
       'openshift-origin-cartridge-jbossas',
+      'openshift-origin-cartridge-mariadb',
 
       'openshift-origin-cartridge-jbossews',
       'openshift-origin-cartridge-jbosseap',
