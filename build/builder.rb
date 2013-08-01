@@ -96,7 +96,7 @@ module OpenShift
         packages.gsub!("ruby193-", "")
       end
 
-      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
+      unless run("su -c \"yum install -y --skip-broken --exclude=\\\"java-1.7.0-openjdk-*\\\" --exclude=\\\"java-1.6.0-openjdk-*\\\" #{packages} 2>&1\"")
         exit 1
       end
     end
