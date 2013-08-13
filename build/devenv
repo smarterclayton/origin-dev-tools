@@ -444,7 +444,7 @@ retries = 0
         scp_from(hostname, "/tmp/rhc/*", "rhc/log", 60, options.ssh_user)
         scp_from(hostname, "/var/log/openshift/broker/*", "rhc/log/broker", 60, options.ssh_user)
         scp_from(hostname, "/var/log/openshift/user_action.log", "rhc/log/broker/user_action.log", 60, options.ssh_user)
-        scp_from(hostname, "/var/log/mcollective.*", "rhc/log/mcollective", 60, options.ssh_user)
+        scp_from(hostname, "/var/log/#{SCL_PREFIX}mcollective.*", "rhc/log/mcollective", 60, options.ssh_user)
         scp_from(hostname, "/var/log/httpd/access_log", "rhc/log/system/access_log.log", 60, options.ssh_user)
         scp_from(hostname, "/var/log/httpd/error_log", "rhc/log/system/error_log.log", 60, options.ssh_user)
         scp_from(hostname, "/var/log/yum.log", "rhc/log/system/yum.log", 60, options.ssh_user)
@@ -498,7 +498,7 @@ retries = 0
 
       def idle_all_gears(hostname)
         puts "Idling all gears on remote instance: #{hostname}"
-        ssh(hostname, 'sudo bash -c "/sbin/service mcollective stop; /sbin/service mcollective start; /sbin/service openshift-port-proxy restart;"', 240, false, 1, options.ssh_user)
+        ssh(hostname, "sudo bash -c '/sbin/service #{SCL_PREFIX}mcollective stop; /sbin/service #{SCL_PREFIX}mcollective start; /sbin/service openshift-port-proxy restart;'", 240, false, 1, options.ssh_user)
         ssh(hostname, 'for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then sudo bash -c "oo-idler -n -u `basename $dir`"; fi; done;', 240, false, 1, options.ssh_user)
         ssh(hostname, 'sudo bash -c "/sbin/service httpd graceful"', 240, false, 1, options.ssh_user)
         puts "Done"
@@ -1060,7 +1060,7 @@ sudo bash -c \"service named restart\"
       end
 
       def restart_services_commands
-        services = [ 'mongod', 'mcollective', 'activemq', 'cgconfig', 'cgred', 
+        services = [ 'mongod', "#{SCL_PREFIX}mcollective" 'activemq', 'cgconfig', 'cgred', 
                       'openshift-broker', 'openshift-console', 'openshift-node-web-proxy',
                       'named', 'sshd', 'oddjobd', 'httpd', 'openshift-tc' ]
         cmd = []
