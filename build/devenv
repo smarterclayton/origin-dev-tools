@@ -154,9 +154,9 @@ popd
       if `rpm -q activemq`.match(/is not installed/)
         run "yum erase -y activemq"
         if base_os.start_with? "fedora"
-          run "yum install -y https://mirror.openshift.com/pub/origin-server/fedora-18/x86_64/activemq-5.6.0-4.fc18.x86_64.rpm"
+          run "yum install -y https://mirror.openshift.com/pub/origin-server/nightly/fedora-19/dependencies/x86_64/activemq-5.6.0-6.fc19.x86_64.rpm"
         elsif(base_os == "rhel" or base_os == "centos")
-          run "yum install -y https://mirror.openshift.com/pub/origin-server/rhel-6/x86_64/activemq-5.6.0-1.el6_3.x86_64.rpm"
+          run "yum install -y https://mirror.openshift.com/pub/origin-server/nightly/rhel-6/dependencies/x86_64/activemq-5.6.0-6.fc19.x86_64.rpm"
         end
       end
       
