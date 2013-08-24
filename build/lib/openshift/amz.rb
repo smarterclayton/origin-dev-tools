@@ -487,7 +487,7 @@ module OpenShift
         full_path = File.expand_path(path)
         config = ParseConfig.new(full_path)
 
-        unless config.get_value("AWSAccessKeyId") && config.get_value("AWSSecretKey")
+        unless config['AWSAccessKeyId'] && config['AWSSecretKey']
           raise <<-EOF
 Couldn't access credentials in #{full_path}
 
@@ -500,12 +500,12 @@ Please create a file with the following format:
 
         # Setup the global access configuration
         aws_config = {
-          :access_key_id => config.get_value("AWSAccessKeyId"),
-          :secret_access_key => config.get_value("AWSSecretKey")
+          :access_key_id => config['AWSAccessKeyId'],
+          :secret_access_key => config['AWSSecretKey']
         }
 
-        if config.get_value("CAFile")
-          aws_config[:ssl_ca_file] = config.get_value("CAFile")
+        if config['CAFile']
+          aws_config[:ssl_ca_file] = config['CAFile']
         elsif File.exists? FEDORA_SYSTEM_CA_FILE
           aws_config[:ssl_ca_file] = FEDORA_SYSTEM_CA_FILE
         end
