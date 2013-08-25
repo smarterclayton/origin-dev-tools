@@ -25,7 +25,7 @@ module OpenShift
     # Only look for a tag if the --tag option is specified
     def get_host_by_name_or_tag(name, options=nil, user="root")
       return name unless options && options.tag?
-      
+
       instance = find_instance(connect(options.region), name, true, true, user)
       if not instance.nil?
         return instance.dns_name
@@ -117,13 +117,13 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
       update_cucumber_tests(hostname, repo_parent_dir, user)
       puts "Done"
     end
-    
+
     def scp_remote_tests(hostname, repo_parent_dir="/root", user="root")
       init_repos(hostname, true, nil, repo_parent_dir, user)
       sync_repos(hostname, repo_parent_dir, user)
       update_remote_tests(hostname, nil, repo_parent_dir, user)
     end
-    
+
     def sync_repos(hostname, remote_repo_parent_dir="/root", sshuser="root")
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dirs.each do |repo_dir|
@@ -167,7 +167,7 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
       end if exists
       exists
     end
-    
+
     def update_test_bundle(hostname, user, *dirs)
       cmd = ""
       dirs.each do |dir|
@@ -194,7 +194,7 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
       end
       return clone_commands, working_dirs
     end
-    
+
     def repo_clone_commands(hostname)
       clone_commands = ''
       SIBLING_REPOS.each_key do |repo_name|
@@ -425,6 +425,8 @@ END
 
     def reset_test_dir(hostname, backup=false, ssh_user="root")
       ssh(hostname, %{
+rm -rf /tmp/rhc/cucumber_results/*
+rm -rf /root/openshift-test/*/test/reports/*
 cat<<EOF > /tmp/reset_test_dir.sh
 if [ -d /tmp/rhc ]
 then
@@ -440,10 +442,10 @@ then
         then
             for i in {1..100}
             do
-                if ! [ -d /tmp/rhc_previous_runs/run_$i ]
+                if ! [ -d /tmp/rhc_previous_runs/run_\\\$i ]
                 then
-                    mkdir -p /tmp/rhc_previous_runs/run_$i
-                    mv /tmp/rhc/* /tmp/rhc_previous_runs/run_$i
+                    mkdir -p /tmp/rhc_previous_runs/run_\\\$i
+                    mv /tmp/rhc/* /tmp/rhc_previous_runs/run_\\\$i
                     break
                 fi
             done
@@ -464,7 +466,7 @@ chmod +x /tmp/reset_test_dir.sh
       ssh(hostname, "sudo bash -c '/tmp/reset_test_dir.sh'" , 120, true, 1, ssh_user)
       ssh(hostname, "sudo bash -c 'rm -rf /var/www/openshift/broker/tmp/cache/*'" , 120, true, 1, ssh_user)
     end
-    
+
     def devenv_branch_wildcard(branch)
       wildcard = nil
       if branch == 'master'
@@ -474,7 +476,7 @@ chmod +x /tmp/reset_test_dir.sh
       end
       wildcard
     end
-    
+
     def devenv_base_branch_wildcard(branch)
       wildcard = nil
       if branch == 'master'
@@ -484,7 +486,7 @@ chmod +x /tmp/reset_test_dir.sh
       end
       wildcard
     end
-    
+
     def print_highlighted_output(title, out)
       puts
       puts "------------------ Begin #{title} ------------------------"
@@ -492,7 +494,7 @@ chmod +x /tmp/reset_test_dir.sh
       puts "------------------- End #{title} -------------------------"
       puts
     end
-    
+
     def print_and_exit(ret, out)
       if ret != 0
         puts "Exiting with error code #{ret}"
@@ -509,7 +511,7 @@ chmod +x /tmp/reset_test_dir.sh
         if failure_queue.empty?
           test_run_success = true
           break
-        else
+        elsif retry_cnt < 3
           reset_test_dir(hostname, true, ssh_user)
         end
         test_queues = [failure_queue]
