@@ -119,7 +119,7 @@ popd
         run "tar jcvf openshift-origin.tbz2 openshift-origin.ovf openshift-origin.tdl openshift-origin.vmx openshift-origin.vmdk"
       end
     end
-    
+
     desc "build_vm [hostname]", "Build a new devenv VM with the given NAME"
     method_option :base_os, :default => "fedora-19", :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
@@ -150,7 +150,7 @@ popd
     def install_required_packages
       base_os = guess_os
       puts "Install packages required for build"
-      
+
       if `rpm -q activemq`.match(/is not installed/)
         run "yum erase -y activemq"
         if base_os.start_with? "fedora"
@@ -159,7 +159,7 @@ popd
           run "yum install -y https://mirror.openshift.com/pub/origin-server/nightly/rhel-6/dependencies/x86_64/activemq-5.6.0-6.fc19.x86_64.rpm"
         end
       end
-      
+
       if base_os.start_with? "fedora"
         run("gem install rspec -v '1.1.12'", options)
       end
@@ -197,7 +197,6 @@ popd
     method_option :disable_charlie, :type => :boolean, :desc=> "Disable idle shutdown timer on dev instance (charlie)"
     method_option :mcollective_logs, :type => :boolean, :desc=> "Don't allow mcollective logs to be deleted on rotation"
     method_option :profile_broker, :type => :boolean, :desc=> "Enable profiling code on broker"
-    method_option :include_web, :type => :boolean, :desc => "Include running Selenium tests"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def test_vm(hostname)
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
@@ -206,7 +205,7 @@ popd
       sanity_check_impl("", hostname, nil, nil, options)
       test_impl("", hostname, nil, nil, options)
     end
-    
+
     desc "local_build", "Builds and installs all packages locally"
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
@@ -219,14 +218,14 @@ popd
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
       self.options = options = self.options.dup
-      
+
       if options.incremental
         options["retry_failure_with_tag"] = false
         update
       else
         FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
         FileUtils.rm_rf "/tmp/tito"
-        
+
         packages = get_packages(false, true).values
 
         if options.clean_packages?
@@ -235,7 +234,7 @@ popd
           puts "Removing stale packages..."
           run("yum erase -y #{package_names}", options)
         end
-        
+
         if options.update_packages?
           puts "Updating all packages on the system..."
           run("yum update -y --exclude activemq", options)
@@ -261,12 +260,12 @@ retries = 0
         run("cp /tmp/tito/x86_64/*.rpm /root/origin-rpms/; cp /tmp/tito/noarch/*.rpm /root/origin-rpms/; createrepo /root/origin-rpms/", options)
         run("cp /tmp/tito/*.src.rpm /data/origin-srpms/; chown -R #{options.ssh_user}:#{options.ssh_user} /data/origin-srpms", options)
         run("yum clean all")
-        
+
         if options.install?
           packages_to_install = packages.select{ |p| not IGNORE_PACKAGES.include?(p.name) }
           package_list = "\"#{packages_to_install.join("\" \"")}\""
           run("yum install -y #{package_list}", options)
-          
+
           #mark all packages as sync'd
           get_sync_dirs
         end
@@ -294,7 +293,7 @@ retries = 0
           end
         end
       end
-     
+
       FileUtils.rm_f "/etc/yum.repos.d/openshift-origin.repo"
       FileUtils.rm_rf "/tmp/tito"
 
@@ -366,21 +365,21 @@ retries = 0
         working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
         inside(working_dir) do
           puts "Tagging #{build_dir}"
-      
+
           # packages without versioning steps
           unless run('tito tag --accept-auto-changelog')
             puts "Failed to tag #{build_dir}"
             tag_failures << build_dir
           end
-      
+
           puts "Done"
         end
       end
-      
+
       tag_failures.each do |build_dir|
         build_dirs.delete_if { | build_info | build_info[1] == build_dir }
       end
-      
+
       push_failures = ''
       SIBLING_REPOS.each do |repo_name, repo_dirs|
         repo_dirs.each do |repo_dir|
@@ -430,7 +429,7 @@ retries = 0
         end
         orig_branches
       end
-      
+
       def reset_orig_branches(orig_branches, verbose=false)
         orig_branches.each do |repo_dir, branch|
           inside(repo_dir) do
@@ -463,10 +462,10 @@ retries = 0
         scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, options.ssh_user)
         puts "Done"
       end
-      
+
       def validate_instance(hostname, num_tries=1)
       end
-      
+
       def update_cucumber_tests(hostname, repo_parent_dir="/data", ssh_user="root")
         ssh(hostname, "
           rm -f #{repo_parent_dir}/openshift-test/tests; 
@@ -713,7 +712,7 @@ retries = 0
 
         clone_commands, working_dirs = sync_available_sibling_repos(hostname, "/data", options.ssh_user)
         update_remote_tests(hostname, nil, "/data", options.ssh_user)
-        
+
         ret = 0
         if !options.skip_build?
           puts "Performing remote install..."
@@ -736,13 +735,13 @@ retries = 0
 
           out, ret = ssh(hostname, "sudo bash -c \"#{options.clean_metadata? ? "yum update --disablerepo='openshift-origin' -y rhc *openshift*" : ''}\"", 60 * 15, true, 1, options.ssh_user) if options.clean_metadata?
           print_and_exit(ret, out) if ret != 0
-          
+
           post_launch_setup(hostname, options)
         end
 
         puts "Done"
       end
-  
+
       def build_impl(name, build_num, image, conn, options)
         $amz_options[:block_device_mappings] = {
             "/dev/sda1" => {
@@ -773,7 +772,7 @@ runcmd:
 
         setup_machine(hostname, options, name, build_num, image, conn, instance)
       end
-        
+
       def setup_machine(hostname, options=nil, name=nil, build_num=nil, image=nil, conn=nil, instance=nil)
         ret, out = 0, nil
         begin
@@ -1047,13 +1046,13 @@ sudo bash -c \"service named restart\"
 
       def update_facts_impl(hostname)
       end
-      
+
       def post_launch_setup(hostname,options)
-	      base_os = guess_os
+        base_os = guess_os
         # reset the eth0 network config to add the dns entries
         out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_hostname.pp\"", 60 * 20, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
-        
+
         out, ret = ssh(hostname, "sudo bash -c \"puppet apply --verbose ~#{options.ssh_user}/configure_origin.pp\"", 60 * 20, true, 3, options.ssh_user)
         print_and_exit(ret, out) if ret != 0
         print_highlighted_output( "Origin setup", out)
