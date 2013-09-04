@@ -83,7 +83,7 @@ yardoc --output-dir ~/origin-docs/node --private --protected --exclude test \
       ~/origin-server/common/;
 yardoc --output-dir ~/origin-docs/plugins --private --protected --exclude test ~/origin-server/plugins;
 yardoc --output-dir ~/origin-docs/build-tools --main ~/origin-dev-tools/README.md --private --protected --exclude test ~/origin-dev-tools/build/;
-cd ~/origin-server/documentation; bundle install; rake build; cp -rf * ~/origin-docs/;
+cd ~/origin-server/documentation; bundle install; bundle exec rake build_all; cp -rf * ~/origin-docs/;
 popd
         }, 1200, false, 3, options.ssh_user)
         FileUtils.mkdir_p "origin-docs/"
