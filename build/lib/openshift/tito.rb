@@ -2,7 +2,7 @@ require 'fileutils'
 
 DEVENV_REGEX = /^rhc-devenv-\d+/
   
-PACKAGE_REGEX = /^([\w\.-]*)-\d+\.\d+\.\d+-\d+\.\..*:$/
+PACKAGE_REGEX = /^([\w\.-]*)-(\d+\.)+\d+-\d+\.\..*:$/
 SKIP_PREREQ_PACKAGES = ['java-devel']
 
 module OpenShift
