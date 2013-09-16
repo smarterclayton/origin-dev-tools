@@ -312,8 +312,8 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
 
     def mcollective_logs(hostname)
       puts "Keep all mcollective logs on remote instance: #{hostname}"
-      ssh(hostname, "echo keeplogs=9999 >> /etc/mcollective/server.cfg", 240)
-      ssh(hostname, "/sbin/service mcollective restart", 240)
+      ssh(hostname, "echo keeplogs=9999 >> #{SCL_ROOT}/etc/mcollective/server.cfg", 240)
+      ssh(hostname, "/sbin/service #{SCL_PREFIX}mcollective restart", 240)
     end
 
     def update_api_file(instance)
