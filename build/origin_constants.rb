@@ -115,7 +115,6 @@ def def_constants(base_os="fedora-19")
   Object.const_set(:CUCUMBER_OPTIONS, OPTIONS[base_os]["cucumber_options"]) unless Object.const_defined?(:CUCUMBER_OPTIONS)
   Object.const_set(:BROKER_CUCUMBER_OPTIONS, OPTIONS[base_os]["broker_cucumber_options"]) unless Object.const_defined?(:BROKER_CUCUMBER_OPTIONS)
   Object.const_set(:BASE_OS, base_os) unless Object.const_defined?(:BASE_OS)
-  Object.const_set(:SCL_ROOT, scl_root) unless Object.const_defined?(:SCL_ROOT)
 
   scl_root = ""
   scl_prefix = ""
@@ -123,5 +122,6 @@ def def_constants(base_os="fedora-19")
     scl_root = "/opt/rh/ruby193/root"
     scl_prefiex = "ruby193-"
   end
+  Object.const_set(:SCL_ROOT, scl_root) unless Object.const_defined?(:SCL_ROOT)
   Object.const_set(:SCL_PREFIX, scl_prefix) unless Object.const_defined?(:SCL_PREFIX)
 end
