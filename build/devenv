@@ -1060,7 +1060,7 @@ sudo bash -c \"service named restart\"
       end
 
       def restart_services_commands
-        services = [ 'mongod', "#{SCL_PREFIX}mcollective" 'activemq', 'cgconfig', 'cgred', 
+        services = [ 'mongod', "#{SCL_PREFIX}mcollective", 'activemq', 'cgconfig', 'cgred', 
                       'openshift-broker', 'openshift-console', 'openshift-node-web-proxy',
                       'named', 'sshd', 'oddjobd', 'httpd', 'openshift-tc' ]
         cmd = []
