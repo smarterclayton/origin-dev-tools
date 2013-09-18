@@ -45,6 +45,7 @@ OPTIONS = {
       'openshift-origin-cartridge-tomcat',
       'openshift-origin-cartridge-ceylon-0.5',
       #'rubygem-openshift-origin-admin-console',
+      'rubygem-openshift-origin-container-libvirt',
     ],
     "cucumber_options"        => '--strict -f progress -f junit --out /tmp/rhc/cucumber_results -t ~@fedora-only -t ~@jboss -t ~@not-origin',
     "broker_cucumber_options" => '--strict -f html --out /tmp/rhc/broker_cucumber.html -f progress  -t ~@fedora-only -t ~@jboss',    
