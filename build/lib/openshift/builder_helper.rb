@@ -108,7 +108,7 @@ set -e;
 sudo bash -c \"rm -rf #{repo_parent_dir}/openshift-test\"
 #{git_archive_commands}
 sudo bash -c \"mkdir -p /tmp/rhc/junit\"
-}, 60, true, 10, user)
+}, 240, true, 10, user)
 
       if exit_code != 0
         exit 1
