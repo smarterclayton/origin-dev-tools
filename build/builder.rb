@@ -323,6 +323,7 @@ module OpenShift
       def_constants(guess_os(options.base_os))
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, options.ssh_user)
+      raise "Could not find an instance that matches #{tag}" unless instance
       hostname = instance.dns_name
 
       test_impl(tag, hostname, instance, conn, options)
@@ -339,6 +340,7 @@ module OpenShift
 
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, options.ssh_user)
+      raise "Could not find an instance that matches #{tag}" unless instance
       hostname = instance.dns_name
 
       sanity_check_impl(tag, hostname, instance, conn, options)
