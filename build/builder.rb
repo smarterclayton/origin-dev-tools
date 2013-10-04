@@ -353,6 +353,7 @@ module OpenShift
       log.level = Logger::ERROR
       conn = connect(options.region)
       instance = find_instance(conn, tag, true, true, options.ssh_user, true)
+      raise "Could not find an instance that matches #{tag}" unless instance
       hostname = instance.dns_name
       print hostname
     end
