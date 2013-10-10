@@ -40,9 +40,18 @@ module OpenShift
       FileUtils.mkdir_p '/tmp/tito/'
       puts "Building in #{build_dir}"
       spec_file = File.expand_path(spec_file)
+      # Check if we need to use the GemBuilder with tito
+      check_gem_source = File.readlines(build_info[2]).select { |line|
+                                            line =~ /^Source0(.+).gem(\s*)$/ }
+      if !check_gem_source.empty?
+        tito_cmd = "tito build --builder=tito.builder.GemBuilder --rpm --test"
+      else
+        tito_cmd = "tito build --rpm --test"
+      end
+
       inside(File.expand_path("#{build_dir}", File.dirname(File.dirname(File.dirname(File.dirname(__FILE__)))))) do
         # Build and install the RPM's locally
-        unless run("tito build --rpm --test", :verbose => options.verbose?)
+        unless run(tito_cmd, :verbose => options.verbose?)
           package = Package.new(spec_file, File.dirname(spec_file))
           package_name = package.name
           ignore_packages = get_ignore_packages
@@ -55,7 +64,7 @@ module OpenShift
           end
           run("sudo bash -c \"yum install -y --skip-broken #{required_packages_str} 2>&1\"") unless required_packages_str.empty?
 
-          if required_packages_str.empty? || !run("tito build --rpm --test", :verbose => options.verbose?)
+          if required_packages_str.empty? || !run(tito_cmd, :verbose => options.verbose?)
             if options.retry_failure_with_tag
               # Tag to trick tito to build
               commit_id = `git log --pretty=format:%%H --max-count=1 %s" % .`
@@ -63,7 +72,7 @@ module OpenShift
               version = get_version(spec_file_name)
               next_version = next_tito_version(version, commit_id)
               puts "current spec file version #{version} next version #{next_version}"
-              unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; tito build --rpm --test", :verbose => options.verbose?)
+              unless run("tito tag --accept-auto-changelog --use-version='#{next_version}'; #{tito_cmd}", :verbose => options.verbose?)
                 FileUtils.rm_rf '/tmp/devenv/sync/'
                 exit 1
               end

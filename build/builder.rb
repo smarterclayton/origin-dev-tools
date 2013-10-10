@@ -69,9 +69,18 @@ module OpenShift
       phases.each_with_index do |phase,i|
         puts "\n#{'='*60}\n\nBuilding phase #{i+1} packages"
         phase.sort.each do |package|
+
+          gem_build = package.spec_file =~ /^Source0(.+).gem(\s*)$/
+
+          if gem_build.nil?
+            tito_cmd = "tito build --rpm --test"
+          else
+            tito_cmd = "tito build --builder=tito.builder.GemBuilder --rpm --test"
+          end
+
           Dir.chdir(package.dir) do
             puts "\n#{'-'*60}"
-            raise "Unable to build #{package.name}" unless system "tito build --rpm --test"
+            raise "Unable to build #{package.name}" unless system tito_cmd
             if prereqs.include? package
               puts "\n    Installing..."
               #FileUtils.rm_rf "/tmp/tito/**"
