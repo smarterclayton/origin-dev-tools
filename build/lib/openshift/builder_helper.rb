@@ -425,7 +425,6 @@ END
 
     def reset_test_dir(hostname, backup=false, ssh_user="root")
       ssh(hostname, %{
-rm -rf /tmp/rhc/cucumber_results/*
 rm -rf /root/openshift-test/*/test/reports/*
 cat<<EOF > /tmp/reset_test_dir.sh
 if [ -d /tmp/rhc ]
