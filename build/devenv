@@ -303,11 +303,21 @@ retries = 0
         next if IGNORE_PACKAGES.include? package_name
         print package_name, build_info.pretty_inspect, "\n"
         build_dir = build_info[0]
+
+        # Check if we need to use the GemBuilder with tito
+        check_gem_source = File.readlines(build_info[2]).select { |line|
+                                          line =~ /^Source0(.+).gem(\s*)$/ }
+        if !check_gem_source.empty?
+          tito_cmd = "tito build --builder=tito.builder.GemBuilder --rpm"
+        else
+          tito_cmd = "tito build --rpm"
+        end
+
         working_dir = File.expand_path("../#{build_dir}", File.dirname(__FILE__))
         inside(working_dir) do
           puts "Building #{build_dir}"
           #unless run("tito build --builder mock --builder-arg mock=fedora-18-x86_64 --rpm", :verbose => options.verbose?)
-          unless run("tito build --rpm", :verbose => options.verbose?)
+          unless run(tito_cmd, :verbose => options.verbose?)
             failed_builds << build_dir 
             puts "Build failed"
             exit 1
