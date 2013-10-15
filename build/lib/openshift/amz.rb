@@ -1,6 +1,7 @@
 require 'parseconfig'
 require 'pp'
 require 'aws'
+require 'aws-sdk'
 require 'date'
 
 module OpenShift
