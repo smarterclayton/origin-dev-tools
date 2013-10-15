@@ -41,7 +41,7 @@ module OpenShift
       puts "Building in #{build_dir}"
       spec_file = File.expand_path(spec_file)
       # Check if we need to use the GemBuilder with tito
-      check_gem_source = File.readlines(build_info[2]).select { |line|
+      check_gem_source = File.readlines(spec_file).select { |line|
                                             line =~ /^Source0(.+).gem(\s*)$/ }
       if !check_gem_source.empty?
         tito_cmd = "tito build --builder=tito.builder.GemBuilder --rpm --test"
