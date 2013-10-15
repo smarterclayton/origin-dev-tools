@@ -249,6 +249,16 @@ module OpenShift
       terminate_instance(instance, true) if instance
     end
 
+    desc "update_ssh_config TAG", "Updates the verifier entry in the ssh config file with the dns info from tag"
+    method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
+    method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
+    def update_ssh_config(tag)
+      options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
+      conn = connect(options.region)
+      instance = find_instance(conn, tag, true, false)
+      update_ssh_config_verifier(instance)
+    end
+
     desc "launch NAME", "Launches the latest DevEnv instance, tagging with NAME"
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verifier, :type => :boolean, :desc => "Add verifier functionality (private IP setup and local tests)"
