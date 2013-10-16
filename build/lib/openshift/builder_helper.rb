@@ -454,11 +454,8 @@ then
                 then
                     mkdir -p /tmp/rhc_previous_runs/run_\\\$i
                     mv /tmp/rhc/* /tmp/rhc_previous_runs/run_\\\$i
-                    if [ -f /tmp/rhc_previous_runs/run_\\\$i/cucumber_results/*.xml ]
-                    then
-                      mkdir -p /tmp/rhc/cucumber_results
-                      mv /tmp/rhc_previous_runs/run_\\\$i/cucumber_results/*.xml /tmp/rhc/cucumber_results
-                    fi
+                    mkdir -p /tmp/rhc/cucumber_results/
+                    mv /tmp/rhc_previous_runs/run_\\\$i/cucumber_results/*.xml /tmp/rhc/cucumber_results/
                     break
                 fi
             done
