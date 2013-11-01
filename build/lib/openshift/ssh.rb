@@ -1,3 +1,5 @@
+require 'pty'
+
 module OpenShift
   module SSH
     SSH_CMD = "ssh 2> /dev/null -t -n -o TCPKeepAlive=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PasswordAuthentication=no -i " + RSA
@@ -36,6 +38,31 @@ module OpenShift
       else
         return output
       end
+    end
+
+    def ssh_pty(hostname, cmd, timeout=60, user="root")
+      log.debug "(ssh: hostname = #{hostname} timeout = #{timeout} / cmd = #{cmd})"
+      ssh_cmd = "#{SSH_CMD} #{user}@#{hostname} '#{cmd} 2>&1'"
+      last_line = ''
+      begin
+        log.debug(ssh_cmd)
+
+        Timeout::timeout(timeout) do
+          begin
+            PTY.spawn( ssh_cmd ) do |r, w, pid|
+              begin
+                r.each { |line| last_line = line; print line }
+             rescue Errno::EIO
+             end
+           end
+         rescue PTY::ChildExited => e
+            log.debug "The child process exited!"
+         end
+        end
+      rescue Timeout::Error
+        log.error "\nSSH command to #{hostname} timed out (timeout = #{timeout})"
+      end
+      last_line
     end
 
     def scp_from(hostname, remote, local, timeout=60, user="root")

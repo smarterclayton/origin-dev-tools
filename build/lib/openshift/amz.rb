@@ -306,7 +306,7 @@ module OpenShift
       end
       private_ip
     end
-    
+
     def use_private_ip(hostname, ssh_user="root")
       private_ip = get_private_ip(hostname)
       puts "Updating instance facts with private ip #{private_ip}"
@@ -330,7 +330,7 @@ module OpenShift
       ssh(hostname, "sed -i \"s/.*PUBLIC_IP_OVERRIDE.*/#PUBLIC_IP_OVERRIDE=/g\" /etc/openshift/node.conf; sed -i \"s/.*PUBLIC_HOSTNAME_OVERRIDE.*/#PUBLIC_HOSTNAME_OVERRIDE=/g\" /etc/openshift/node.conf; #{SCL_ROOT}/usr/libexec/mcollective/update_yaml.rb /etc/mcollective/facts.yaml; service libra-data start", 60, false, 1, ssh_user)
       puts 'Done'
     end
-    
+
     def set_instance_ip(hostname, ip, dhostname, ssh_user="root")
       print "Updating the controller to use the ip '#{ip}'..."
       # Both calls below are needed to fix a race condition between ssh and libra-data start times
