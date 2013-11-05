@@ -129,7 +129,7 @@ popd
     method_option :install_required_packages, :type => :boolean, :desc => "Create an instance with all the packages required by OpenShift"
     method_option :skip_verify, :type => :boolean, :desc => "Skip running tests to verify the build"
     method_option :exclude_broker, :type => :boolean, :desc => "Exclude broker tests"
-    method_option :exclude_runtime, :type => :boolean, :desc => "Exclude runtime tests"
+    method_option :exclude_node, :type => :boolean, :desc => "Exclude node tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
@@ -189,7 +189,7 @@ popd
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :exclude_broker, :type => :boolean, :desc => "Exclude broker tests"
-    method_option :exclude_runtime, :type => :boolean, :desc => "Exclude runtime tests"
+    method_option :exclude_node, :type => :boolean, :desc => "Exclude node tests"
     method_option :exclude_site, :type => :boolean, :desc => "Exclude site tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_cucumber, :required => false, :desc => "Include a specific cucumber test (verify, internal, node, api, etc)"
@@ -623,9 +623,9 @@ retries = 0
                   test_queues[2] << build_rake_command("OpenShift Broker Cartridge System", "cd openshift-test/broker; rake test:cartridge_system_test", {}, true)
                   test_queues[3] << build_rake_command("OpenShift Broker Domain System", "cd openshift-test/broker; rake test:domain_system_test", {}, true)
                   test_queues[3] << build_rake_command("OpenShift Broker Functionals Ext", "cd /data/openshift-test/broker; rake test:functionals_ext")
-                when 'runtime'
+                when 'node'
                   (1..3).each do |i|
-                    test_queues[i-1] << build_cucumber_command("Extended Runtime Group #{i}", ["@runtime_extended#{i}"])
+                    test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}"])
                   end
                 when 'rhc'
                   test_queues[0] << build_cucumber_command("RHC Extended", ["@rhc_extended"])
@@ -650,11 +650,11 @@ retries = 0
               test_queues[3] << build_cucumber_command("Broker cucumber", ["@broker"])
             end
 
-            unless options.exclude_runtime?
-              test_queues[0] << build_rake_command("Runtime Functional", "cd /data/openshift-test/node; rake func_test", {}, false)
-              test_queues[0] << build_rake_command("Runtime Unit", "cd /data/openshift-test/node; rake unit_test", {}, false)
+            unless options.exclude_node?
+              test_queues[0] << build_rake_command("Node Functional", "cd /data/openshift-test/node; rake func_test", {}, false)
+              test_queues[0] << build_rake_command("Node Unit", "cd /data/openshift-test/node; rake unit_test", {}, false)
               (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Runtime Group #{i.to_s}", ["@runtime#{i.to_s}"])
+                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"])
               end
             end
 
@@ -676,9 +676,9 @@ retries = 0
               extended_tests.each do |extended_test|
                 case extended_test
                   when 'broker'
-                  when 'runtime'
+                  when 'node'
                     idle_all_gears(hostname)
-                    singleton_queue << build_cucumber_command("Runtime singletons", ["@singleton"])
+                    singleton_queue << build_cucumber_command("Node singletons", ["@singleton"])
                   when 'site'
                   when 'rhc'
                   else

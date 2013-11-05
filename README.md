@@ -27,7 +27,7 @@ The tools can be invoked using [/build/devenv](https://github.com/openshift/orig
 		  [--verbose]                              # Enable verbose logging
 		  [--official]                             # For official use.  Send emails, etc.
 		  [--exclude-broker]                       # Exclude broker tests
-		  [--exclude-runtime]                      # Exclude runtime tests
+		  [--exclude-node]                         # Exclude node tests
 		  [--exclude-site]                         # Exclude site tests
 		  [--exclude-rhc]                          # Exclude rhc tests
 		  [--include-web]                          # Include running Selenium tests
@@ -82,7 +82,7 @@ The tools can be invoked using [/build/devenv](https://github.com/openshift/orig
 		  [--verbose]                            # Enable verbose logging
 		  [--official]                           # For official use.  Send emails, etc.
 		  [--exclude-broker]                     # Exclude broker tests
-		  [--exclude-runtime]                    # Exclude runtime tests
+		  [--exclude-node]                       # Exclude node tests
 		  [--exclude-site]                       # Exclude site tests
 		  [--exclude-rhc]                        # Exclude rhc tests
 		  [--include-cucumber=INCLUDE_CUCUMBER]  # Include a specific cucumber test (verify, internal, node, api, etc)
