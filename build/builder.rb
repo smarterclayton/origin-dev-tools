@@ -21,13 +21,13 @@ module OpenShift
       end
 
     end
-    
+
     desc "find_and_build_specs", "Builds all non ignored specs in the current directory", :hide => true
     method_option :base_os, :default => nil, :desc => "Operating system for Origin (fedora or rhel)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def find_and_build_specs
       def_constants(guess_os(options.base_os))
-      
+
       packages = get_packages(false, true).values
       buildable = packages.select{ |p| not IGNORE_PACKAGES.include? p.name }.select do |p|
         Dir.chdir(p.dir) { system "git tag | grep '#{p.name}' 2>&1 1>/dev/null" }.tap do |r|
@@ -141,7 +141,7 @@ module OpenShift
 
       # Override the machine type to launch if necessary
       $amz_options[:instance_type] = options[:instance_type] if options[:instance_type]
-  
+
       # Establish a new connection
       conn = connect(options.region)
 
@@ -177,21 +177,21 @@ module OpenShift
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def update
       def_constants(guess_os())
-      
+
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       # Warn on uncommitted changes
       `git diff-index --quiet HEAD`
       puts "WARNING - Uncommitted repository changes" if $? != 0
-    
+
       # Figure out what needs to be built - exclude devenv for syncs
       sync_dirs = get_sync_dirs
       sync_dirs = sync_dirs.sort_by{ |sync_dir| sync_dir[0] }.reverse
-    
+
       sync_dirs.each do |sync_dir|
         package_name = sync_dir[0]
         build_dir = sync_dir[1]
         spec_file = sync_dir[2]
-    
+
         if IGNORE_PACKAGES.include? package_name
           puts "Skipping #{package_name}"
           return
@@ -199,14 +199,14 @@ module OpenShift
           build_and_install(package_name, build_dir, spec_file, options)
         end
       end
-    
+
       if options.include_stale?
         stale_dirs = get_stale_dirs
         stale_dirs.each do |stale_dir|
           package_name = stale_dir[0]
           build_dir = stale_dir[1]
           spec_file = stale_dir[2]
-    
+
           if IGNORE_PACKAGES.include? package_name
             puts "Skipping #{package_name}"
             return
@@ -228,7 +228,7 @@ module OpenShift
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
     def sync(name)
       def_constants(guess_os(options.base_os))
-      
+
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       sync_impl(name, options)
     end
@@ -365,7 +365,7 @@ module OpenShift
 
       sanity_check_impl(tag, hostname, instance, conn, options)
     end
-    
+
     desc "print_hostname", "Print the hostname of a tagged instance"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
@@ -377,7 +377,12 @@ module OpenShift
       hostname = instance.dns_name
       print hostname
     end
-    
+
+    desc "print_required_packages", "Print a space separated list of required packages"
+    def print_required_packages
+      puts get_required_packages
+    end
+
     desc "clone_addtl_repos BRANCH", "Clones any additional repos not including this repo and any other repos that extend these dev tools"
     method_option :replace, :type => :boolean, :desc => "Replace the addtl repos if the already exist"
     def clone_addtl_repos(branch)

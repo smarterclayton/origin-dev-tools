@@ -20,7 +20,7 @@ module SetupHelper
     end
     return is_installed
   end
-  
+
   def self.install_gem(base_os, gem_name, version='',try_rpm=false)
     install_succeeded = false
     puts "Installing gem #{gem_name}"
