@@ -130,6 +130,7 @@ popd
     method_option :skip_verify, :type => :boolean, :desc => "Skip running tests to verify the build"
     method_option :exclude_broker, :type => :boolean, :desc => "Exclude broker tests"
     method_option :exclude_node, :type => :boolean, :desc => "Exclude node tests"
+    method_option :exclude_cartridge, :type => :boolean, :desc => "Exclude cartridge tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_extended, :required => false, :desc => "Include extended tests"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
@@ -190,6 +191,7 @@ popd
     method_option :verbose, :type => :boolean, :desc => "Enable verbose logging"
     method_option :exclude_broker, :type => :boolean, :desc => "Exclude broker tests"
     method_option :exclude_node, :type => :boolean, :desc => "Exclude node tests"
+    method_option :exclude_cartridge, :type => :boolean, :desc => "Exclude cartridge tests"
     method_option :exclude_site, :type => :boolean, :desc => "Exclude site tests"
     method_option :exclude_rhc, :type => :boolean, :desc => "Exclude rhc tests"
     method_option :include_cucumber, :required => false, :desc => "Include a specific cucumber test (verify, internal, node, api, etc)"
@@ -627,6 +629,10 @@ retries = 0
                   (1..3).each do |i|
                     test_queues[i-1] << build_cucumber_command("Extended Node Group #{i}", ["@node_extended#{i}"])
                   end
+                when 'cartridge'
+                  (1..3).each do |i|
+                    test_queues[i-1] << build_cucumber_command("Extended Cartridge Group #{i}", ["@cartridge_extended#{i}"])
+                  end
                 when 'rhc'
                   test_queues[0] << build_cucumber_command("RHC Extended", ["@rhc_extended"])
                   test_queues[1] << build_cucumber_command("RHC Integration",[],
@@ -655,6 +661,14 @@ retries = 0
               test_queues[0] << build_rake_command("Node Unit", "cd /data/openshift-test/node; rake unit_test", {}, false)
               (1..4).each do |i|
                 test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"])
+              end
+            end
+
+            unless options.exclude_cartridge?
+              #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/cartridge; rake cart_func_test", {}, false)
+              #test_queues[0] << build_rake_command("Cartridge Unit", "cd /data/openshift-test/node; rake cart_unit_test", {}, false)
+              (1..4).each do |i|
+                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"])
               end
             end
 
