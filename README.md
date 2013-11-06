@@ -92,9 +92,6 @@ The tools can be invoked using [/build/devenv](https://github.com/openshift/orig
 		  [--mcollective-logs]                   # Don't allow mcollective logs to be deleted on rotation
 		  [--profile-broker]                     # Enable profiling code on broker
 		  [--include-web]                        # Include running Selenium tests
-		  [--sauce-username=SAUCE_USERNAME]      # Sauce Labs username
-		  [--sauce-access-key=SAUCE_ACCESS_KEY]  # Sauce Labs access key
-		  [--sauce-overage]                      # Run Sauce Labs tests even if we are over our monthly minute quota
 		  [--region=REGION]                      # Amazon region override (default us-east-1)
 
   * ./build/devenv sync [NAME]
