@@ -135,6 +135,7 @@ module OpenShift
     method_option :extra_rpm_dir, :required => false, :dessc => "Directory containing extra rpms to be installed"
     method_option :disable_selinux, :required => false, :default => false, :type => :boolean, :dessc => "Directory containing extra rpms to be installed"
     method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
+    method_option :download_devenv_repo, :type => :string, :desc => "If specified, the resulting devenv's RPM repo will be downloaded to the specified directory"
     def build(name, build_num)
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))
