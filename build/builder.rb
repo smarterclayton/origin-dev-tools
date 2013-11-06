@@ -333,11 +333,8 @@ module OpenShift
     method_option :disable_charlie, :type => :boolean, :desc=> "Disable idle shutdown timer on dev instance (charlie)"
     method_option :mcollective_logs, :type => :boolean, :desc=> "Don't allow mcollective logs to be deleted on rotation"
     method_option :profile_broker, :type => :boolean, :desc=> "Enable profiling code on broker"
-    method_option :sauce_username, :required => false, :desc => "Sauce Labs username"
-    method_option :sauce_access_key, :required => false, :desc => "Sauce Labs access key"
-    method_option :sauce_overage, :type => :boolean, :desc => "Run Sauce Labs tests even if we are over our monthly minute quota"
     method_option :region, :required => false, :desc => "Amazon region override (default us-east-1)"
-    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build maching"
+    method_option :ssh_user, :type => :string, :default => "root", :desc => "User to use when ssh'ing to build machine"
     def test(tag)
       options.verbose? ? log.level = Logger::DEBUG : log.level = Logger::ERROR
       def_constants(guess_os(options.base_os))

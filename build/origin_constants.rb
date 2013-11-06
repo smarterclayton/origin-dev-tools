@@ -64,11 +64,6 @@ KEY_PAIR = "libra"
 RSA = File.expand_path("~/.ssh/devenv.pem")
 RSA_SOURCE = ""
 
-SAUCE_USER = ""
-SAUCE_SECRET = ""
-SAUCE_OS = ""
-SAUCE_BROWSER = ""
-SAUCE_BROWSER_VERSION = ""
 CAN_SSH_TIMEOUT=90
 SLEEP_AFTER_LAUNCH=60
 
