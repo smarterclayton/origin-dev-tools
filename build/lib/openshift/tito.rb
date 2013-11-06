@@ -1,7 +1,7 @@
 require 'fileutils'
 
 DEVENV_REGEX = /^rhc-devenv-\d+/
-  
+
 PACKAGE_REGEX = /^([\w\.-]*)-(\d+\.)+\d+-\d+\.\..*:$/
 SKIP_PREREQ_PACKAGES = ['java-devel']
 
@@ -147,7 +147,7 @@ module OpenShift
       def build_requires
         @build_requires ||= spec_file.lines.to_a.inject([]) do |a,s|
           match = s.match(/^\s*BuildRequires:\s*(.+)$/)
-          a << Require.new(replace_globals(match[1])) if match
+          a << Require.new(replace_globals(match[1].gsub('?scl:%scl_prefix', 'scl_prefix'))) if match
           a
         end
       end
@@ -155,7 +155,7 @@ module OpenShift
       def requires
         @requires ||= spec_file.lines.to_a.inject([]) do |a,s|
           match = s.match(/^\s*Requires:\s*(.+)$/)
-          a << Require.new(replace_globals(match[1])) if match
+          a << Require.new(replace_globals(match[1].gsub('?scl:%scl_prefix', 'scl_prefix'))) if match
           a
         end
       end
@@ -177,7 +177,7 @@ module OpenShift
           end
         end
       end
-      
+
       def provides
         @provides ||= begin
           package = /Provides:\s*(.*)/.match(spec_file)
@@ -250,8 +250,7 @@ module OpenShift
           gsub(/\)/, '').
           gsub(/[<>]=?.+/, ''). # strip version qualifiers
           gsub(/=.+/,'').
-          gsub(/,/, '').
-          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+          gsub(/,/, '').strip
       end
       def yum_name
         @yum_name ||= value.
@@ -259,15 +258,13 @@ module OpenShift
           gsub(/\)/, '').
           gsub(/[<>]=?.+/, '').
           gsub(/=/,'-').
-          gsub(/,/, '').
-          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+          gsub(/,/, '').strip
       end
       def yum_name_with_version
         @yum_name ||= value.
           gsub(/\(/, '-').
           gsub(/\)/, '').
-          gsub(/,/, '').
-          gsub('%{?scl:%scl_prefix}', 'ruby193-').strip
+          gsub(/,/, '').strip
       end
       def to_s
         name
@@ -338,7 +335,7 @@ module OpenShift
       nv = next_patch_version(version)
       run("/bin/sed -i 's,#{gem_name} (.*,#{gem_name} (#{nv}),' #{gemfile}", :verbose => verbose)
     end
-    
+
     def get_yum_version(package)
       yum_output = `yum info #{package}`
 
