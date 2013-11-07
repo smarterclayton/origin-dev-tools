@@ -690,7 +690,10 @@ retries = 0
                   when 'broker'
                   when 'node'
                     idle_all_gears(hostname)
-                    singleton_queue << build_cucumber_command("Node singletons", ["@singleton"])
+                    singleton_queue << build_cucumber_command("Node singletons", ["@node_singleton"])
+                  when 'cartridge'
+                    idle_all_gears(hostname)
+                    singleton_queue << build_cucumber_command("Cartridge singletons", ["@cartridge_singleton"])
                   when 'site'
                   when 'rhc'
                   else
