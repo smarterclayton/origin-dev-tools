@@ -658,15 +658,15 @@ retries = 0
 
             unless options.exclude_node?
               test_queues[0] << build_rake_command("Node Essentials", "cd /data/openshift-test/node; rake essentials_test | tail -100; exit ${PIPESTATUS[0]}", {}, false)
-              (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"])
+              (1..3).each do |i|
+                test_queues[i] << build_cucumber_command("Node Group #{i.to_s}", ["@node#{i.to_s}"])
               end
             end
 
             unless options.exclude_cartridge?
               #test_queues[0] << build_rake_command("Cartridge Functional", "cd /data/openshift-test/cartridge; rake cart_essentials_test", {}, false)
-              (1..4).each do |i|
-                test_queues[i-1] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"])
+              (1..3).each do |i|
+                test_queues[i] << build_cucumber_command("Cartridge Group #{i.to_s}", ["@cartridge#{i.to_s}"])
               end
             end
 
