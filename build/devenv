@@ -64,7 +64,6 @@ runcmd:
       puts "Launching AMI: #{image.id} - #{image.name}"
       instance = launch_instance(image, "oso-doc-builder", 1, options.ssh_user)
       hostname = instance.dns_name
-      puts "Done"
 
       begin
         ssh(hostname, %{
@@ -240,7 +239,6 @@ popd
         if options.update_packages?
           puts "Updating all packages on the system..."
           run("yum update -y --exclude activemq", options)
-          puts "Done"
         end
 
         find_and_build_specs
@@ -324,7 +322,6 @@ retries = 0
             puts "Build failed"
             exit 1
           else
-            puts "Done"
           end
         end
       end
@@ -384,7 +381,6 @@ retries = 0
             tag_failures << build_dir
           end
 
-          puts "Done"
         end
       end
 
@@ -472,7 +468,6 @@ retries = 0
           chown #{options.ssh_user}:#{options.ssh_user} -R /tmp/origin-rpms\"", 60, false, 2, options.ssh_user)
         scp_from(hostname, "/tmp/origin-rpms/*.rpm", "origin-rpms", 300, options.ssh_user)
         scp_from(hostname, "/data/origin-srpms/*.src.rpm", "origin-srpms", 300, options.ssh_user)
-        puts "Done"
       end
 
       def validate_instance(hostname, num_tries=1)
@@ -504,7 +499,6 @@ retries = 0
         manifest.gsub!('.noarch', '')
         manifest.gsub!(/\.git\.[a-z0-9\.]+/, '')
         manifest = manifest[0..254]
-        puts "Done"
         return manifest
       end
 
@@ -513,7 +507,6 @@ retries = 0
         ssh(hostname, "sudo bash -c '/sbin/service #{SCL_PREFIX}mcollective stop; /sbin/service #{SCL_PREFIX}mcollective start; /sbin/service openshift-port-proxy restart;'", 240, false, 1, options.ssh_user)
         ssh(hostname, 'for dir in /var/lib/openshift/*; do if [ -d $dir ] && [ ! -h $dir ] ; then sudo bash -c "oo-idler -n -u `basename $dir`"; fi; done;', 240, false, 1, options.ssh_user)
         ssh(hostname, 'sudo bash -c "/sbin/service httpd graceful"', 240, false, 1, options.ssh_user)
-        puts "Done"
       end
 
       def broker_profiler(hostname, enable=true)
@@ -712,7 +705,6 @@ retries = 0
           end
           broker_profiler(hostname, enable=false) if options.profile_broker?
 
-          puts "Done"
         rescue => e
           print "Exception occured #{e.message}\n"
           print e.backtrace, "\n\n"
@@ -767,7 +759,6 @@ retries = 0
           post_launch_setup(hostname, options)
         end
 
-        puts "Done"
       end
 
       def build_impl(name, build_num, image, conn, options)
@@ -795,7 +786,6 @@ runcmd:
         instance = launch_instance(image, name + "_" + build_num, 3, options.ssh_user)
         hostname = instance.dns_name
 
-        puts "Done"
         puts "Hostname: #{hostname}"
 
         setup_machine(hostname, options, name, build_num, image, conn, instance)
@@ -912,7 +902,6 @@ Host github.com
 
           out, ret = ssh(hostname, "cd /data; rm -rf #{working_dirs}; #{clone_commands}", 60 * 5, true, 2, options.ssh_user)
           print_and_exit(ret, out) if ret != 0
-          puts "Done"
 
           puts "Install build script dependencies"
           out, ret = ssh(hostname, "sudo bash -c \"cd /data/origin-dev-tools; build/devenv 2>&1 \"", 60 * 15, true, 2, options.ssh_user) if ret == 0
@@ -1117,7 +1106,6 @@ sudo bash -c \"service named restart\"
         else
           print_highlighted_output( "Origin services restart", out)
         end
-        puts "Done"
       end
     end # no_tasks end
   end # class end

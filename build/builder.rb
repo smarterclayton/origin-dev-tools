@@ -289,12 +289,10 @@ module OpenShift
 
       instance = launch_instance(ami, name, 1, options.ssh_user)
       hostname = instance.dns_name
-      puts "Done"
       puts "Hostname: #{hostname}"
 
       puts "Sleeping for #{SLEEP_AFTER_LAUNCH} seconds to let node stabilize..."
       sleep SLEEP_AFTER_LAUNCH
-      puts "Done"
 
       update_facts_impl(hostname)
       post_launch_setup(hostname,options)
@@ -317,7 +315,6 @@ module OpenShift
       puts "Public IP:       #{instance.public_ip_address}"
       puts "Public Hostname: #{hostname}"
       puts "Site URL:        https://#{hostname}"
-      puts "Done"
     end
 
     desc "test TAG", "Runs the tests on a tagged instance and downloads the results"
@@ -421,7 +418,6 @@ module OpenShift
             reset_temp_commit
           end
 
-          puts "Done"
         end
       else
         puts "Couldn't find ../rhc."

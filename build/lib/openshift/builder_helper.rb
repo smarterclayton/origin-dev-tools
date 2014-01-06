@@ -124,7 +124,6 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
       end
 
       update_cucumber_tests(hostname, repo_parent_dir, user)
-      puts "Done"
     end
 
     def scp_remote_tests(hostname, repo_parent_dir="/root", user="root")
@@ -163,7 +162,6 @@ sudo bash -c \"mkdir -p /tmp/rhc/junit\"
           # End shell code
           SHELL
 
-        puts "Done"
       ensure
         reset_temp_commit
       end
@@ -429,7 +427,6 @@ END
     def reboot(instance)
       print "Rebooting instance to apply new kernel..."
       instance.reboot
-      puts "Done"
     end
 
     def reset_test_dir(hostname, backup=false, ssh_user="root")
